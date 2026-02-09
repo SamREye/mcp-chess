@@ -12,9 +12,10 @@ export function getMcpScope() {
 
 export function getBaseUrl(req: Request) {
   const configuredPublicBase =
-    process.env.MCP_PUBLIC_URL?.trim() || process.env.NEXTAUTH_URL?.trim();
+    normalizeConfiguredBaseUrl(process.env.MCP_PUBLIC_URL) ||
+    normalizeConfiguredBaseUrl(process.env.NEXTAUTH_URL);
   if (configuredPublicBase) {
-    return configuredPublicBase.replace(/\/+$/, "");
+    return configuredPublicBase;
   }
 
   const url = new URL(req.url);
@@ -27,6 +28,27 @@ export function getBaseUrl(req: Request) {
   }
 
   return url.origin;
+}
+
+function normalizeConfiguredBaseUrl(value: string | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+
+  try {
+    const parsed = new URL(withScheme);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return null;
+    }
+
+    const pathname = parsed.pathname === "/" ? "" : parsed.pathname.replace(/\/+$/, "");
+    return `${parsed.origin}${pathname}`;
+  } catch {
+    return null;
+  }
 }
 
 export function getProtectedResourceMetadata(baseUrl: string) {
