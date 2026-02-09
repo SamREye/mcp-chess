@@ -32,7 +32,9 @@ const requiredSqliteTables = [
   "Invite",
   "Account",
   "Session",
-  "VerificationToken"
+  "VerificationToken",
+  "OAuthCode",
+  "OAuthAccessToken"
 ];
 
 export async function ensureDbReady() {

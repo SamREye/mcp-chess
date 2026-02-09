@@ -97,6 +97,37 @@ CREATE TABLE "VerificationToken" (
     "expires" DATETIME NOT NULL
 );
 
+-- CreateTable
+CREATE TABLE "OAuthCode" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "codeHash" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "clientId" TEXT NOT NULL,
+    "redirectUri" TEXT NOT NULL,
+    "scope" TEXT,
+    "resource" TEXT,
+    "codeChallenge" TEXT NOT NULL,
+    "codeChallengeMethod" TEXT NOT NULL DEFAULT 'S256',
+    "expiresAt" DATETIME NOT NULL,
+    "usedAt" DATETIME,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "OAuthCode_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "OAuthAccessToken" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "tokenHash" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "clientId" TEXT NOT NULL,
+    "scope" TEXT,
+    "resource" TEXT,
+    "expiresAt" DATETIME NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastUsedAt" DATETIME,
+    CONSTRAINT "OAuthAccessToken_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
@@ -124,3 +155,17 @@ CREATE UNIQUE INDEX "VerificationToken_token_key" ON "VerificationToken"("token"
 -- CreateIndex
 CREATE UNIQUE INDEX "VerificationToken_identifier_token_key" ON "VerificationToken"("identifier", "token");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "OAuthCode_codeHash_key" ON "OAuthCode"("codeHash");
+
+-- CreateIndex
+CREATE INDEX "OAuthCode_userId_idx" ON "OAuthCode"("userId");
+
+-- CreateIndex
+CREATE INDEX "OAuthCode_expiresAt_idx" ON "OAuthCode"("expiresAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "OAuthAccessToken_tokenHash_key" ON "OAuthAccessToken"("tokenHash");
+
+-- CreateIndex
+CREATE INDEX "OAuthAccessToken_userId_expiresAt_idx" ON "OAuthAccessToken"("userId", "expiresAt");

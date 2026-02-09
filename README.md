@@ -50,6 +50,13 @@ If dev chunk/CSS 404s appear during hot reload:
 
 Tool names are in `lib/mcp-tools.ts`.
 
+OAuth for MCP clients:
+- Protected resource metadata: `GET /.well-known/oauth-protected-resource`
+- Authorization server metadata: `GET /.well-known/oauth-authorization-server`
+- Authorization endpoint: `GET /oauth/authorize`
+- Token endpoint: `POST /oauth/token`
+- Optional allow-list: set `MCP_OAUTH_ALLOWED_CLIENT_IDS` to comma-separated client IDs
+
 ## Ably Realtime
 
 - Token endpoint: `GET /api/ably/token`

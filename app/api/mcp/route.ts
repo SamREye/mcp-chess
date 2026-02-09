@@ -1,5 +1,12 @@
 import { auth } from "@/lib/auth";
 import { ensureDbReady } from "@/lib/db";
+import {
+  getAuthorizationServerMetadata,
+  getBaseUrl,
+  getProtectedResourceMetadata,
+  getUserIdFromBearerToken,
+  getWwwAuthenticateHeader
+} from "@/lib/mcp-oauth";
 import { executeTool, toolDefs } from "@/lib/mcp-tools";
 
 type JsonRpcRequest = {
@@ -20,7 +27,8 @@ function jsonRpcSuccess(id: string | number | null | undefined, result: unknown)
 function jsonRpcError(
   id: string | number | null | undefined,
   code: number,
-  message: string
+  message: string,
+  options?: { status?: number; headers?: HeadersInit }
 ) {
   return Response.json(
     {
@@ -28,15 +36,23 @@ function jsonRpcError(
       id: id ?? null,
       error: { code, message }
     },
-    { status: 400 }
+    {
+      status: options?.status ?? 400,
+      headers: options?.headers
+    }
   );
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const baseUrl = getBaseUrl(req);
   return Response.json({
     name: "mcp-chess",
     protocol: "JSON-RPC 2.0",
-    endpoint: "/api/mcp"
+    endpoint: "/api/mcp",
+    oauth: {
+      authorizationServer: `${baseUrl}/.well-known/oauth-authorization-server`,
+      protectedResource: `${baseUrl}/.well-known/oauth-protected-resource`
+    }
   });
 }
 
@@ -54,12 +70,19 @@ export async function POST(req: Request) {
     await ensureDbReady();
 
     if (method === "initialize") {
+      const baseUrl = getBaseUrl(req);
       return jsonRpcSuccess(id, {
         protocolVersion: "2024-11-05",
         serverInfo: { name: "mcp-chess", version: "0.1.0" },
         capabilities: {
-          tools: {}
-        }
+          tools: {},
+          oauth: {
+            protectedResource: getProtectedResourceMetadata(baseUrl),
+            authorizationServer: getAuthorizationServerMetadata(baseUrl)
+          }
+        },
+        instructions:
+          "OAuth 2.0 authorization-code + PKCE is supported via /.well-known endpoints."
       });
     }
 
@@ -75,6 +98,7 @@ export async function POST(req: Request) {
 
     if (method === "tools/call") {
       const session = await auth();
+      const bearerUserId = await getUserIdFromBearerToken(req.headers.get("authorization"));
       const name = params?.name;
       const args = params?.arguments ?? {};
 
@@ -82,9 +106,24 @@ export async function POST(req: Request) {
         return jsonRpcError(id, -32602, "Invalid params: tool name is required");
       }
 
-      const result = await executeTool(name, args, {
-        userId: session?.user?.id ?? null
-      });
+      let result: unknown;
+      try {
+        result = await executeTool(name, args, {
+          userId: session?.user?.id ?? bearerUserId
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Internal error";
+        if (message === "Authentication required") {
+          const baseUrl = getBaseUrl(req);
+          return jsonRpcError(id, -32001, message, {
+            status: 401,
+            headers: {
+              "www-authenticate": getWwwAuthenticateHeader(baseUrl)
+            }
+          });
+        }
+        throw error;
+      }
 
       return jsonRpcSuccess(id, {
         content: [{ type: "text", text: JSON.stringify(result) }],

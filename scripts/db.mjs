@@ -12,7 +12,9 @@ const requiredTables = [
   "Invite",
   "Account",
   "Session",
-  "VerificationToken"
+  "VerificationToken",
+  "OAuthCode",
+  "OAuthAccessToken"
 ];
 
 if (!fs.existsSync(migrationSql)) {
