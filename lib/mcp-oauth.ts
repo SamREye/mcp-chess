@@ -11,6 +11,12 @@ export function getMcpScope() {
 }
 
 export function getBaseUrl(req: Request) {
+  const configuredPublicBase =
+    process.env.MCP_PUBLIC_URL?.trim() || process.env.NEXTAUTH_URL?.trim();
+  if (configuredPublicBase) {
+    return configuredPublicBase.replace(/\/+$/, "");
+  }
+
   const url = new URL(req.url);
   const forwardedProto = req.headers.get("x-forwarded-proto");
   const forwardedHost = req.headers.get("x-forwarded-host");

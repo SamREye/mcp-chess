@@ -3,6 +3,7 @@ import { ensureDbReady } from "@/lib/db";
 import {
   assertAllowedClientId,
   createAuthorizationCode,
+  getBaseUrl,
   getMcpScope,
   isValidCodeChallenge,
   validateRedirectUri
@@ -26,6 +27,7 @@ function redirectWithError(
 export async function GET(req: Request) {
   await ensureDbReady();
 
+  const baseUrl = getBaseUrl(req);
   const url = new URL(req.url);
   const responseType = url.searchParams.get("response_type");
   const clientId = url.searchParams.get("client_id");
@@ -92,8 +94,10 @@ export async function GET(req: Request) {
 
   const session = await auth();
   if (!session?.user?.id) {
-    const signIn = new URL("/api/auth/signin/google", url.origin);
-    signIn.searchParams.set("callbackUrl", req.url);
+    const signIn = new URL("/api/auth/signin/google", baseUrl);
+    const callbackUrl = new URL("/oauth/authorize", baseUrl);
+    callbackUrl.search = url.search;
+    signIn.searchParams.set("callbackUrl", callbackUrl.toString());
     return Response.redirect(signIn, 302);
   }
 
