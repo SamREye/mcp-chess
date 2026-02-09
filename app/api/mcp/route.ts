@@ -103,10 +103,7 @@ export async function POST(req: Request) {
           description: tool.description,
           inputSchema: tool.inputSchema,
           annotations: {
-            title: tool.name,
-            readOnlyHint: readOnlyToolNames.has(tool.name),
-            // Compatibility hint for clients that surface public/private tool visibility.
-            visibility: readOnlyToolNames.has(tool.name) ? "public" : "private"
+            readOnlyHint: readOnlyToolNames.has(tool.name)
           }
         }))
       });
