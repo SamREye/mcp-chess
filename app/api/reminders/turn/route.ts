@@ -4,6 +4,8 @@ import { z } from "zod";
 import { db, ensureDbReady } from "@/lib/db";
 import { sendTurnReminderEmail } from "@/lib/email";
 
+export const dynamic = "force-dynamic";
+
 const payloadSchema = z.object({
   gameId: z.string().min(1),
   minMinutesSinceLastMove: z.number().int().min(1).max(60 * 24 * 30).default(60),

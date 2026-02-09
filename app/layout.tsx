@@ -39,7 +39,9 @@ export default async function RootLayout({
                   </form>
                 </>
               ) : (
-                <a href="/api/auth/signin/google?callbackUrl=%2F">Sign in</a>
+                <a href="/api/auth/signin/google?prompt=select_account&callbackUrl=%2F">
+                  Sign in
+                </a>
               )}
             </nav>
           </header>

@@ -7,6 +7,8 @@ import {
 } from "@/lib/mcp-oauth";
 import { executeTool, toolDefs } from "@/lib/mcp-tools";
 
+export const dynamic = "force-dynamic";
+
 const readOnlyToolNames = new Set([
   "query_users_by_email",
   "snapshot",

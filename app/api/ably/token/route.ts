@@ -1,6 +1,8 @@
 import { auth } from "@/lib/auth";
 import { createAblyTokenRequest } from "@/lib/ably-server";
 
+export const dynamic = "force-dynamic";
+
 function createClientId(userId: string | null) {
   if (userId) {
     return `user:${userId}`;

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mongodb"
   url      = env("DATABASE_URL")
 }
 
@@ -19,7 +19,7 @@ enum InviteStatus {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
   name          String?
   email         String?   @unique
   emailVerified DateTime?
@@ -41,10 +41,10 @@ model User {
 }
 
 model Game {
-  id          String     @id @default(cuid())
-  whiteId     String
-  blackId     String
-  createdById String
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  whiteId     String     @db.ObjectId
+  blackId     String     @db.ObjectId
+  createdById String     @db.ObjectId
   status      GameStatus @default(ACTIVE)
   fen         String
   pgn         String     @default("")
@@ -60,9 +60,9 @@ model Game {
 }
 
 model Move {
-  id        String   @id @default(cuid())
-  gameId    String
-  byUserId  String
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  gameId    String   @db.ObjectId
+  byUserId  String   @db.ObjectId
   from      String
   to        String
   promotion String?
@@ -80,9 +80,9 @@ model Move {
 }
 
 model ChatMessage {
-  id        String   @id @default(cuid())
-  gameId    String
-  userId    String
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  gameId    String   @db.ObjectId
+  userId    String   @db.ObjectId
   body      String
   createdAt DateTime @default(now())
 
@@ -93,9 +93,9 @@ model ChatMessage {
 }
 
 model Invite {
-  id          String       @id @default(cuid())
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
   email       String
-  invitedById String
+  invitedById String       @db.ObjectId
   status      InviteStatus @default(PENDING)
   createdAt   DateTime     @default(now())
 
@@ -106,8 +106,8 @@ model Invite {
 
 // NextAuth models
 model Account {
-  id                String  @id @default(cuid())
-  userId            String
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
   type              String
   provider          String
   providerAccountId String
@@ -125,15 +125,16 @@ model Account {
 }
 
 model Session {
-  id           String   @id @default(cuid())
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
   sessionToken String   @unique
-  userId       String
+  userId       String   @db.ObjectId
   expires      DateTime
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
   identifier String
   token      String   @unique
   expires    DateTime
@@ -142,9 +143,9 @@ model VerificationToken {
 }
 
 model OAuthCode {
-  id                  String   @id @default(cuid())
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
   codeHash            String   @unique
-  userId              String
+  userId              String   @db.ObjectId
   clientId            String
   redirectUri         String
   scope               String?
@@ -162,9 +163,9 @@ model OAuthCode {
 }
 
 model OAuthAccessToken {
-  id         String   @id @default(cuid())
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
   tokenHash  String   @unique
-  userId     String
+  userId     String   @db.ObjectId
   clientId   String
   scope      String?
   resource   String?

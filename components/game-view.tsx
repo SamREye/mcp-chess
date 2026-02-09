@@ -171,8 +171,23 @@ export function GameView({
     channel.subscribe(onMessage);
 
     return () => {
-      channel.unsubscribe(onMessage);
-      client.close();
+      try {
+        channel.unsubscribe(onMessage);
+      } catch {
+        // Ignore teardown errors if channel/client are already closed.
+      }
+
+      try {
+        client.channels.release(`game:${gameId}`);
+      } catch {
+        // Ignore teardown errors if channel/client are already closed.
+      }
+
+      try {
+        client.close();
+      } catch {
+        // Ignore teardown errors if connection is already closed.
+      }
     };
   }, [gameId, currentUserId, load, refreshChat]);
 

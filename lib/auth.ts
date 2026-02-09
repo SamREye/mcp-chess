@@ -11,7 +11,12 @@ if (process.env.GOOGLE_ID && process.env.GOOGLE_SECRET) {
   providers.push(
     GoogleProvider({
       clientId: process.env.GOOGLE_ID,
-      clientSecret: process.env.GOOGLE_SECRET
+      clientSecret: process.env.GOOGLE_SECRET,
+      authorization: {
+        params: {
+          prompt: "select_account"
+        }
+      }
     })
   );
 }

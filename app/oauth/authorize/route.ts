@@ -9,6 +9,8 @@ import {
   validateRedirectUri
 } from "@/lib/mcp-oauth";
 
+export const dynamic = "force-dynamic";
+
 function redirectWithError(
   redirectUri: string,
   state: string | null,
@@ -97,6 +99,7 @@ export async function GET(req: Request) {
     const signIn = new URL("/api/auth/signin/google", baseUrl);
     const callbackUrl = new URL("/oauth/authorize", baseUrl);
     callbackUrl.search = url.search;
+    signIn.searchParams.set("prompt", "select_account");
     signIn.searchParams.set("callbackUrl", callbackUrl.toString());
     return Response.redirect(signIn, 302);
   }

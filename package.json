@@ -10,8 +10,8 @@
     "start": "pnpm run db:init && NEXT_DIST_DIR=.next-build next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "prisma:generate": "DATABASE_URL=${DATABASE_URL:-file:./dev.db} prisma generate",
-    "prisma:migrate": "prisma migrate dev",
+    "prisma:generate": "DATABASE_URL=${DATABASE_URL:-mongodb://127.0.0.1:27017/mcp_chess?directConnection=true} prisma generate",
+    "prisma:migrate": "prisma db push",
     "prisma:push": "prisma db push",
     "db:init": "node scripts/db.mjs init",
     "db:reset": "node scripts/db.mjs reset"

@@ -23,12 +23,13 @@ A minimal multiplayer chess app where game mutations are exposed as MCP-style to
 
 1. `cp .env.example .env`
 2. Fill OAuth, Ably, and SMTP values:
+   - `DATABASE_URL` (MongoDB connection string)
    - `NEXTAUTH_SECRET`, `GOOGLE_ID`, `GOOGLE_SECRET`
    - `ABLY_API_KEY`
    - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
 3. `pnpm install`
 4. `pnpm run prisma:generate`
-5. `pnpm run db:init` (or `pnpm run db:reset` to recreate the DB at `DATABASE_URL`)
+5. `pnpm run db:init` (applies Prisma schema/indexes to MongoDB)
 6. `pnpm run dev`
 
 If dev chunk/CSS 404s appear during hot reload:
@@ -37,8 +38,8 @@ If dev chunk/CSS 404s appear during hot reload:
 
 ## Deploy Notes (Railway)
 
-- `start` now runs `db:init` automatically, so sqlite databases are initialized before Next starts.
-- If you use a non-sqlite `DATABASE_URL`, `db:init` is skipped.
+- Use a persistent MongoDB service and set `DATABASE_URL` to that connection string.
+- `start` runs `db:init` automatically, which performs `prisma db push --skip-generate`.
 
 ## MCP endpoint
 

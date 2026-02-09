@@ -5,6 +5,8 @@ import {
   isValidPkceVerifier
 } from "@/lib/mcp-oauth";
 
+export const dynamic = "force-dynamic";
+
 function oauthError(error: string, description: string, status = 400) {
   return Response.json(
     {
