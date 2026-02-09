@@ -4,6 +4,16 @@ import { PrismaClient } from "@prisma/client";
 
 const migrationSql = path.resolve("prisma/migrations/0001_init/migration.sql");
 const mode = process.argv[2] ?? "init";
+const requiredTables = [
+  "User",
+  "Game",
+  "Move",
+  "ChatMessage",
+  "Invite",
+  "Account",
+  "Session",
+  "VerificationToken"
+];
 
 if (!fs.existsSync(migrationSql)) {
   console.error(`Missing migration SQL: ${migrationSql}`);
@@ -45,7 +55,7 @@ const prisma = new PrismaClient({
 });
 
 try {
-  if (await hasUserTable(prisma)) {
+  if (await hasRequiredTables(prisma, requiredTables)) {
     console.log(`DB already initialized: ${dbPath}`);
     process.exit(0);
   }
@@ -88,11 +98,23 @@ function sqlitePathFromUrl(url) {
   return path.resolve(process.cwd(), target);
 }
 
-async function hasUserTable(prisma) {
+async function hasRequiredTables(prisma, expectedTables) {
+  const quoted = expectedTables.map((name) => `'${name.replace(/'/g, "''")}'`).join(", ");
   const rows = await prisma.$queryRawUnsafe(
-    "SELECT name FROM sqlite_master WHERE type='table' AND name='User';"
+    `SELECT name FROM sqlite_master WHERE type='table' AND name IN (${quoted});`
   );
-  return Array.isArray(rows) && rows.length > 0;
+
+  const found = new Set(
+    Array.isArray(rows)
+      ? rows
+          .map((row) =>
+            row && typeof row === "object" && "name" in row ? String(row.name) : null
+          )
+          .filter(Boolean)
+      : []
+  );
+
+  return expectedTables.every((name) => found.has(name));
 }
 
 async function applyMigrationSql(prisma, sqlFilePath) {
@@ -100,7 +122,8 @@ async function applyMigrationSql(prisma, sqlFilePath) {
   const statements = splitStatements(text);
 
   for (const statement of statements) {
-    await prisma.$executeRawUnsafe(statement);
+    const normalized = toIdempotentDdl(statement);
+    await prisma.$executeRawUnsafe(normalized);
   }
 }
 
@@ -114,6 +137,25 @@ function splitStatements(sql) {
     .split(";")
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+function toIdempotentDdl(statement) {
+  if (/^CREATE TABLE\s+/i.test(statement)) {
+    return statement.replace(/^CREATE TABLE\s+/i, "CREATE TABLE IF NOT EXISTS ");
+  }
+
+  if (/^CREATE UNIQUE INDEX\s+/i.test(statement)) {
+    return statement.replace(
+      /^CREATE UNIQUE INDEX\s+/i,
+      "CREATE UNIQUE INDEX IF NOT EXISTS "
+    );
+  }
+
+  if (/^CREATE INDEX\s+/i.test(statement)) {
+    return statement.replace(/^CREATE INDEX\s+/i, "CREATE INDEX IF NOT EXISTS ");
+  }
+
+  return statement;
 }
 
 function readEnvFile(filePath) {
