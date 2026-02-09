@@ -1,7 +1,7 @@
 import { Chess } from "chess.js";
 import { z } from "zod";
 
-import { db } from "@/lib/db";
+import { db, ensureDbReady } from "@/lib/db";
 import { sendTurnReminderEmail } from "@/lib/email";
 
 const payloadSchema = z.object({
@@ -23,6 +23,8 @@ function readReminderKey(req: Request) {
 }
 
 export async function POST(req: Request) {
+  await ensureDbReady();
+
   const requiredKey = process.env.REMINDER_API_KEY;
   if (requiredKey) {
     const provided = readReminderKey(req);

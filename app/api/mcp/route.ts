@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { ensureDbReady } from "@/lib/db";
 import { executeTool, toolDefs } from "@/lib/mcp-tools";
 
 type JsonRpcRequest = {
@@ -50,6 +51,8 @@ export async function POST(req: Request) {
   const { id, method, params } = body;
 
   try {
+    await ensureDbReady();
+
     if (method === "initialize") {
       return jsonRpcSuccess(id, {
         protocolVersion: "2024-11-05",
