@@ -108,6 +108,24 @@ export async function POST(req: Request) {
       });
     }
 
+    if (method === "resources/list") {
+      return jsonRpcSuccess(id, {
+        resources: []
+      });
+    }
+
+    if (method === "resources/templates/list") {
+      return jsonRpcSuccess(id, {
+        resourceTemplates: []
+      });
+    }
+
+    if (method === "prompts/list") {
+      return jsonRpcSuccess(id, {
+        prompts: []
+      });
+    }
+
     if (method === "tools/call") {
       const session = await auth();
       const bearerUserId = await getUserIdFromBearerToken(req.headers.get("authorization"));
