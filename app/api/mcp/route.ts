@@ -9,6 +9,16 @@ import {
 } from "@/lib/mcp-oauth";
 import { executeTool, toolDefs } from "@/lib/mcp-tools";
 
+const readOnlyToolNames = new Set([
+  "query_users_by_email",
+  "snapshot",
+  "status",
+  "history",
+  "list_games",
+  "get_game",
+  "get_chat_messages"
+]);
+
 type JsonRpcRequest = {
   jsonrpc?: string;
   id?: string | number | null;
@@ -91,7 +101,13 @@ export async function POST(req: Request) {
         tools: toolDefs.map((tool) => ({
           name: tool.name,
           description: tool.description,
-          inputSchema: tool.inputSchema
+          inputSchema: tool.inputSchema,
+          annotations: {
+            title: tool.name,
+            readOnlyHint: readOnlyToolNames.has(tool.name),
+            // Compatibility hint for clients that surface public/private tool visibility.
+            visibility: readOnlyToolNames.has(tool.name) ? "public" : "private"
+          }
         }))
       });
     }
