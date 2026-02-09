@@ -1,9 +1,7 @@
 import { auth } from "@/lib/auth";
 import { ensureDbReady } from "@/lib/db";
 import {
-  getAuthorizationServerMetadata,
   getBaseUrl,
-  getProtectedResourceMetadata,
   getUserIdFromBearerToken,
   getWwwAuthenticateHeader
 } from "@/lib/mcp-oauth";
@@ -58,11 +56,7 @@ export async function GET(req: Request) {
   return Response.json({
     name: "mcp-chess",
     protocol: "JSON-RPC 2.0",
-    endpoint: "/api/mcp",
-    oauth: {
-      authorizationServer: `${baseUrl}/.well-known/oauth-authorization-server`,
-      protectedResource: `${baseUrl}/.well-known/oauth-protected-resource`
-    }
+    endpoint: "/api/mcp"
   });
 }
 
@@ -79,20 +73,21 @@ export async function POST(req: Request) {
   try {
     await ensureDbReady();
 
+    if (method === "notifications/initialized") {
+      return new Response(null, { status: 204 });
+    }
+
+    if (method === "ping") {
+      return jsonRpcSuccess(id, {});
+    }
+
     if (method === "initialize") {
-      const baseUrl = getBaseUrl(req);
       return jsonRpcSuccess(id, {
         protocolVersion: "2024-11-05",
         serverInfo: { name: "mcp-chess", version: "0.1.0" },
         capabilities: {
-          tools: {},
-          oauth: {
-            protectedResource: getProtectedResourceMetadata(baseUrl),
-            authorizationServer: getAuthorizationServerMetadata(baseUrl)
-          }
-        },
-        instructions:
-          "OAuth 2.0 authorization-code + PKCE is supported via /.well-known endpoints."
+          tools: {}
+        }
       });
     }
 
@@ -102,9 +97,13 @@ export async function POST(req: Request) {
           name: tool.name,
           description: tool.description,
           inputSchema: tool.inputSchema,
-          annotations: {
-            readOnlyHint: readOnlyToolNames.has(tool.name)
-          }
+          ...(readOnlyToolNames.has(tool.name)
+            ? {
+                annotations: {
+                  readOnlyHint: true
+                }
+              }
+            : {})
         }))
       });
     }
