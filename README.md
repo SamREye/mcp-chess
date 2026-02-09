@@ -35,6 +35,11 @@ If dev chunk/CSS 404s appear during hot reload:
 - run `pnpm run dev:fresh` to clear the dev build cache and restart
 - use `pnpm run build && pnpm run start` for a stable non-HMR preview session
 
+## Deploy Notes (Railway)
+
+- `start` now runs `db:init` automatically, so sqlite databases are initialized before Next starts.
+- If you use a non-sqlite `DATABASE_URL`, `db:init` is skipped.
+
 ## MCP endpoint
 
 `POST /api/mcp` with JSON-RPC payloads:

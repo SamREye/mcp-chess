@@ -7,7 +7,7 @@
     "dev": "NEXT_DIST_DIR=.next-dev next dev",
     "dev:fresh": "rm -rf .next-dev && NEXT_DIST_DIR=.next-dev next dev",
     "build": "pnpm run prisma:generate && NEXT_DIST_DIR=.next-build next build",
-    "start": "NEXT_DIST_DIR=.next-build next start",
+    "start": "pnpm run db:init && NEXT_DIST_DIR=.next-build next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "DATABASE_URL=${DATABASE_URL:-file:./dev.db} prisma generate",

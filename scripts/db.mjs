@@ -11,6 +11,19 @@ if (!fs.existsSync(migrationSql)) {
 }
 
 const databaseUrl = resolveDatabaseUrl();
+
+if (!databaseUrl.startsWith("file:")) {
+  if (mode === "init") {
+    console.log(
+      `Skipping sqlite init for non-sqlite DATABASE_URL (${redactDatabaseUrl(databaseUrl)}).`
+    );
+    process.exit(0);
+  }
+  throw new Error(
+    `Only sqlite file URLs are supported for db:${mode}. Got: ${redactDatabaseUrl(databaseUrl)}`
+  );
+}
+
 const dbPath = sqlitePathFromUrl(databaseUrl);
 
 if (mode === "reset") {
@@ -65,10 +78,6 @@ function resolveDatabaseUrl() {
 }
 
 function sqlitePathFromUrl(url) {
-  if (!url.startsWith("file:")) {
-    throw new Error(`Only sqlite file URLs are supported for db scripts. Got: ${url}`);
-  }
-
   const target = url.slice("file:".length);
 
   if (target.startsWith("//")) {
@@ -109,4 +118,8 @@ function readEnvFile(filePath) {
   }
 
   return out;
+}
+
+function redactDatabaseUrl(url) {
+  return url.length > 64 ? `${url.slice(0, 64)}...` : url;
 }
