@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { PrismaClient } from "@prisma/client";
 
 const migrationSql = path.resolve("prisma/migrations/0001_init/migration.sql");
 const mode = process.argv[2] ?? "init";
@@ -38,25 +38,22 @@ if (mode === "reset") {
 
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
-if (hasUserTable(dbPath)) {
-  console.log(`DB already initialized: ${dbPath}`);
-  process.exit(0);
-}
+const prisma = new PrismaClient({
+  datasources: {
+    db: { url: databaseUrl }
+  }
+});
 
-execFileSync("sqlite3", [dbPath, `.read ${migrationSql}`], { stdio: "inherit" });
-console.log(`DB initialized: ${dbPath}`);
+try {
+  if (await hasUserTable(prisma)) {
+    console.log(`DB already initialized: ${dbPath}`);
+    process.exit(0);
+  }
 
-function hasUserTable(targetDbPath) {
-  const output = execFileSync(
-    "sqlite3",
-    [
-      targetDbPath,
-      "SELECT name FROM sqlite_master WHERE type='table' AND name='User';"
-    ],
-    { encoding: "utf8" }
-  );
-
-  return output.trim() === "User";
+  await applyMigrationSql(prisma, migrationSql);
+  console.log(`DB initialized: ${dbPath}`);
+} finally {
+  await prisma.$disconnect();
 }
 
 function resolveDatabaseUrl() {
@@ -89,6 +86,34 @@ function sqlitePathFromUrl(url) {
   }
 
   return path.resolve(process.cwd(), target);
+}
+
+async function hasUserTable(prisma) {
+  const rows = await prisma.$queryRawUnsafe(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='User';"
+  );
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+async function applyMigrationSql(prisma, sqlFilePath) {
+  const text = fs.readFileSync(sqlFilePath, "utf8");
+  const statements = splitStatements(text);
+
+  for (const statement of statements) {
+    await prisma.$executeRawUnsafe(statement);
+  }
+}
+
+function splitStatements(sql) {
+  const withoutCommentLines = sql
+    .split(/\r?\n/)
+    .filter((line) => !line.trim().startsWith("--"))
+    .join("\n");
+
+  return withoutCommentLines
+    .split(";")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 function readEnvFile(filePath) {
