@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum GameStatus {
+  ACTIVE
+  FINISHED
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+
+  whiteGames   Game[]        @relation("WhitePlayer")
+  blackGames   Game[]        @relation("BlackPlayer")
+  createdGames Game[]        @relation("CreatedGames")
+  moves        Move[]
+  chatMessages ChatMessage[]
+  invitesSent  Invite[]      @relation("InvitedBy")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Game {
+  id          String     @id @default(cuid())
+  whiteId     String
+  blackId     String
+  createdById String
+  status      GameStatus @default(ACTIVE)
+  fen         String
+  pgn         String     @default("")
+  isPublic    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  white        User          @relation("WhitePlayer", fields: [whiteId], references: [id])
+  black        User          @relation("BlackPlayer", fields: [blackId], references: [id])
+  createdBy    User          @relation("CreatedGames", fields: [createdById], references: [id])
+  moves        Move[]
+  chatMessages ChatMessage[]
+}
+
+model Move {
+  id        String   @id @default(cuid())
+  gameId    String
+  byUserId  String
+  from      String
+  to        String
+  promotion String?
+  san       String
+  fenBefore String
+  fenAfter  String
+  ply       Int
+  createdAt DateTime @default(now())
+
+  game   Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  byUser User @relation(fields: [byUserId], references: [id])
+
+  @@unique([gameId, ply])
+  @@index([gameId, createdAt])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  gameId    String
+  userId    String
+  body      String
+  createdAt DateTime @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([gameId, createdAt])
+}
+
+model Invite {
+  id          String       @id @default(cuid())
+  email       String
+  invitedById String
+  status      InviteStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+
+  invitedBy User @relation("InvitedBy", fields: [invitedById], references: [id])
+
+  @@index([email])
+}
+
+// NextAuth models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
