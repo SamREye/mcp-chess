@@ -562,6 +562,7 @@ export function GameView({
             {isChatLoading && <p className="muted">Loading chat...</p>}
             <ChatPanel
               messages={messages}
+              currentUserId={currentUserId}
               canSend={Boolean(game.canMove && currentUserId)}
               onSend={sendMessage}
             />

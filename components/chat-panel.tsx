@@ -18,10 +18,12 @@ type Message = {
 
 export function ChatPanel({
   messages,
+  currentUserId,
   canSend,
   onSend
 }: {
   messages: Message[];
+  currentUserId: string | null;
   canSend: boolean;
   onSend: (body: string) => Promise<void>;
 }) {
@@ -47,7 +49,7 @@ export function ChatPanel({
   }
 
   return (
-    <section className="panel stack">
+    <section className="panel chat-panel">
       <h3 style={{ margin: 0 }}>Game Chat</h3>
       <div className="chat-box">
         {messages.length === 0 ? (
@@ -55,26 +57,31 @@ export function ChatPanel({
         ) : (
           messages.map((msg) => {
             const timestamp = new Date(msg.createdAt).toLocaleString();
+            const isSelf = Boolean(currentUserId && msg.user.id === currentUserId);
             return (
-              <div key={msg.id} className="chat-msg" title={timestamp}>
-              <Avatar
-                email={msg.user.email}
-                image={msg.user.image}
-                fallback="?"
-                className="avatar-chat"
-                title={msg.user.email ?? msg.user.id}
-              />
-              <div className="chat-msg-content">
-                <p style={{ margin: "0.2rem 0" }}>{msg.body}</p>
+              <div
+                key={msg.id}
+                className={`chat-msg ${isSelf ? "chat-msg-self" : "chat-msg-other"}`}
+                title={timestamp}
+              >
+                <Avatar
+                  email={msg.user.email}
+                  image={msg.user.image}
+                  fallback="?"
+                  className="avatar-chat"
+                  title={msg.user.email ?? msg.user.id}
+                />
+                <div className="chat-msg-content">
+                  <p style={{ margin: "0.2rem 0" }}>{msg.body}</p>
+                </div>
               </div>
-            </div>
             );
           })
         )}
       </div>
 
       {canSend ? (
-        <div className="row">
+        <div className="row chat-compose">
           <input
             value={body}
             onChange={(e) => setBody(e.target.value)}

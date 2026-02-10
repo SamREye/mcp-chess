@@ -325,7 +325,7 @@ button.primary:hover {
   display: grid;
   grid-template-columns: minmax(320px, auto) minmax(320px, 1fr);
   gap: 0.9rem;
-  align-items: start;
+  align-items: stretch;
 }
 
 .game-board-pane {
@@ -334,6 +334,15 @@ button.primary:hover {
 
 .game-chat-pane {
   display: block;
+  min-height: 0;
+}
+
+.chat-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  height: 100%;
+  min-height: 0;
 }
 
 .mobile-switch {
@@ -577,20 +586,52 @@ button.primary:hover {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
-  max-height: min(56vh, 520px);
+  max-height: none;
+  height: 100%;
+  min-height: 0;
   overflow: auto;
   padding: 0.75rem;
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   gap: 0.5rem;
+}
+
+.chat-box > * {
+  flex: 0 0 auto;
+}
+
+.chat-compose {
+  margin-top: 0;
 }
 
 .chat-msg {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 0.6rem;
   align-items: start;
   border-bottom: 1px dashed #e7e0d4;
   padding-bottom: 0.4rem;
+  width: 100%;
+}
+
+.chat-msg-self {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.chat-msg-other {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.chat-msg-other .avatar-chat {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.chat-msg-other .chat-msg-content {
+  grid-column: 1;
+  grid-row: 1;
+  text-align: right;
 }
 
 .chat-msg:last-child {
@@ -651,5 +692,10 @@ button.primary:hover {
 
   .chat-box {
     max-height: min(48vh, 360px);
+    height: auto;
+  }
+
+  .chat-panel {
+    height: auto;
   }
 }
