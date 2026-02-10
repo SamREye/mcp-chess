@@ -67,7 +67,7 @@ export function getAuthorizationServerMetadata(baseUrl: string) {
     token_endpoint: `${baseUrl}/oauth/token`,
     response_types_supported: ["code"],
     grant_types_supported: ["authorization_code"],
-    token_endpoint_auth_methods_supported: ["none"],
+    token_endpoint_auth_methods_supported: ["none", "client_secret_post", "client_secret_basic"],
     code_challenge_methods_supported: ["S256", "plain"],
     scopes_supported: [OAUTH_SCOPE]
   };
@@ -96,7 +96,7 @@ export function assertAllowedClientId(clientId: string) {
 
 export function isValidPkceVerifier(value: string) {
   const trimmed = value.trim();
-  return trimmed.length >= 32 && trimmed.length <= 512;
+  return trimmed.length >= 1 && trimmed.length <= 1024;
 }
 
 export function isValidCodeChallenge(value: string) {
@@ -185,7 +185,11 @@ export async function exchangeAuthorizationCode(input: {
   }
 
   if (input.redirectUri && authCode.redirectUri !== input.redirectUri) {
-    throw new Error("invalid_grant");
+    const expected = normalizeUriForComparison(authCode.redirectUri);
+    const got = normalizeUriForComparison(input.redirectUri);
+    if (!expected || !got || expected !== got) {
+      throw new Error("invalid_grant");
+    }
   }
 
   if (!verifyPkce(authCode.codeChallenge, authCode.codeChallengeMethod, input.codeVerifier)) {
@@ -273,7 +277,7 @@ function verifyPkce(
   }
 
   if (method === "S256") {
-    return sha256(verifier) === challenge;
+    return normalizeBase64Url(sha256(verifier)) === normalizeBase64Url(challenge);
   }
 
   return false;
@@ -285,4 +289,20 @@ function randomToken(bytes = 32) {
 
 function sha256(value: string) {
   return createHash("sha256").update(value).digest("base64url");
+}
+
+function normalizeUriForComparison(value: string) {
+  try {
+    const parsed = new URL(value);
+    if (parsed.pathname.length > 1) {
+      parsed.pathname = parsed.pathname.replace(/\/+$/, "");
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
+function normalizeBase64Url(value: string) {
+  return value.trim().replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }

@@ -26,6 +26,7 @@ function oauthError(error: string, description: string, status = 400) {
 async function getTokenRequestBody(req: Request) {
   const authHeader = req.headers.get("authorization");
   const basicClientId = parseBasicAuthClientId(authHeader);
+  const basicClientSecret = parseBasicAuthClientSecret(authHeader);
   const contentType = req.headers.get("content-type") ?? "";
 
   if (contentType.includes("application/json")) {
@@ -34,6 +35,7 @@ async function getTokenRequestBody(req: Request) {
       grantType: String(json.grant_type ?? ""),
       code: String(json.code ?? ""),
       clientId: String(json.client_id ?? basicClientId ?? ""),
+      clientSecret: String(json.client_secret ?? basicClientSecret ?? ""),
       redirectUri: String(json.redirect_uri ?? ""),
       codeVerifier: String(json.code_verifier ?? "")
     };
@@ -44,6 +46,7 @@ async function getTokenRequestBody(req: Request) {
     grantType: String(form.get("grant_type") ?? ""),
     code: String(form.get("code") ?? ""),
     clientId: String(form.get("client_id") ?? basicClientId ?? ""),
+    clientSecret: String(form.get("client_secret") ?? basicClientSecret ?? ""),
     redirectUri: String(form.get("redirect_uri") ?? ""),
     codeVerifier: String(form.get("code_verifier") ?? "")
   };
@@ -107,6 +110,16 @@ export async function POST(req: Request) {
 }
 
 function parseBasicAuthClientId(header: string | null) {
+  const creds = parseBasicAuth(header);
+  return creds?.clientId ?? null;
+}
+
+function parseBasicAuthClientSecret(header: string | null) {
+  const creds = parseBasicAuth(header);
+  return creds?.clientSecret ?? null;
+}
+
+function parseBasicAuth(header: string | null) {
   if (!header || !header.toLowerCase().startsWith("basic ")) {
     return null;
   }
@@ -114,8 +127,13 @@ function parseBasicAuthClientId(header: string | null) {
   try {
     const raw = Buffer.from(header.slice(6).trim(), "base64").toString("utf8");
     const sep = raw.indexOf(":");
-    const clientId = sep >= 0 ? raw.slice(0, sep) : raw;
-    return clientId.trim() || null;
+    if (sep < 0) {
+      return { clientId: raw.trim(), clientSecret: "" };
+    }
+    return {
+      clientId: raw.slice(0, sep).trim(),
+      clientSecret: raw.slice(sep + 1)
+    };
   } catch {
     return null;
   }
