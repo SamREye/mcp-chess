@@ -6,6 +6,7 @@ import {
 } from "@/lib/mcp-oauth";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 function oauthError(req: Request, error: string, description: string, status = 400) {
   return Response.json(
@@ -44,6 +45,21 @@ async function getTokenRequestBody(req: Request) {
     };
   }
 
+  if (contentType.includes("application/x-www-form-urlencoded")) {
+    const text = await req.text();
+    const params = new URLSearchParams(text);
+    return {
+      grantType: String(params.get("grant_type") ?? params.get("grantType") ?? ""),
+      code: String(params.get("code") ?? ""),
+      clientId: String(params.get("client_id") ?? params.get("clientId") ?? basicClientId ?? ""),
+      clientSecret: String(
+        params.get("client_secret") ?? params.get("clientSecret") ?? basicClientSecret ?? ""
+      ),
+      redirectUri: String(params.get("redirect_uri") ?? params.get("redirectUri") ?? ""),
+      codeVerifier: String(params.get("code_verifier") ?? params.get("codeVerifier") ?? "")
+    };
+  }
+
   const form = await req.formData();
   return {
     grantType: String(form.get("grant_type") ?? form.get("grantType") ?? ""),
@@ -58,6 +74,14 @@ async function getTokenRequestBody(req: Request) {
 }
 
 export async function OPTIONS(req: Request) {
+  if (process.env.OAUTH_DEBUG === "true") {
+    console.info("[oauth/token] options", {
+      origin: req.headers.get("origin"),
+      requestMethod: req.headers.get("access-control-request-method"),
+      requestHeaders: req.headers.get("access-control-request-headers")
+    });
+  }
+
   return new Response(null, {
     status: 204,
     headers: getCorsHeaders(req)
@@ -65,10 +89,55 @@ export async function OPTIONS(req: Request) {
 }
 
 export async function POST(req: Request) {
-  await ensureDbReady();
+  if (process.env.OAUTH_DEBUG === "true") {
+    console.info("[oauth/token] request_start", {
+      method: req.method,
+      origin: req.headers.get("origin"),
+      contentType: req.headers.get("content-type"),
+      hasAuthorization: Boolean(req.headers.get("authorization")),
+      userAgent: req.headers.get("user-agent")
+    });
+  }
 
-  const { grantType, code, clientId, redirectUri, codeVerifier } =
-    await getTokenRequestBody(req);
+  try {
+    await ensureDbReady();
+  } catch (error) {
+    if (process.env.OAUTH_DEBUG === "true") {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[oauth/token] db_connect_error", { message });
+    }
+    return oauthError(req, "server_error", "Database connection failed", 500);
+  }
+
+  let parsed: {
+    grantType: string;
+    code: string;
+    clientId: string;
+    clientSecret: string;
+    redirectUri: string;
+    codeVerifier: string;
+  };
+  try {
+    parsed = await getTokenRequestBody(req);
+  } catch (error) {
+    if (process.env.OAUTH_DEBUG === "true") {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[oauth/token] parse_error", { message });
+    }
+    return oauthError(req, "invalid_request", "Unable to parse token request");
+  }
+
+  const { grantType, code, clientId, redirectUri, codeVerifier } = parsed;
+
+  if (process.env.OAUTH_DEBUG === "true") {
+    console.info("[oauth/token] parsed", {
+      grantType,
+      hasCode: Boolean(code),
+      hasClientId: Boolean(clientId),
+      hasRedirectUri: Boolean(redirectUri),
+      verifierLength: codeVerifier.length
+    });
+  }
 
   if (grantType !== "authorization_code") {
     return oauthError(req, "unsupported_grant_type", "Only authorization_code is supported");
@@ -98,6 +167,13 @@ export async function POST(req: Request) {
       codeVerifier
     });
 
+    if (process.env.OAUTH_DEBUG === "true") {
+      console.info("[oauth/token] success", {
+        hasClientId: Boolean(clientId),
+        hasRedirectUri: Boolean(redirectUri)
+      });
+    }
+
     return Response.json(
       {
         access_token: token.accessToken,
@@ -116,6 +192,13 @@ export async function POST(req: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "invalid_grant";
     if (message === "invalid_grant") {
+      if (process.env.OAUTH_DEBUG === "true") {
+        console.warn("[oauth/token] invalid_grant", {
+          hasClientId: Boolean(clientId),
+          hasRedirectUri: Boolean(redirectUri),
+          verifierLength: codeVerifier.length
+        });
+      }
       return oauthError(req, "invalid_grant", "Authorization code is invalid or expired");
     }
     if (process.env.OAUTH_DEBUG === "true") {
