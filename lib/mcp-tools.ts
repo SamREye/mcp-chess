@@ -78,6 +78,52 @@ const getChatInput = z.object({
   limit: z.number().int().min(1).max(200).default(50)
 });
 
+async function getStatusForGame(gameId: string) {
+  const game = await db.game.findUnique({ where: { id: gameId } });
+  if (!game || !game.isPublic) throw new Error("Game not found");
+
+  const chess = new Chess(game.fen);
+
+  return {
+    gameId: game.id,
+    fen: game.fen,
+    turn: chess.turn(),
+    isCheck: chess.isCheck(),
+    isCheckmate: chess.isCheckmate(),
+    isStalemate: chess.isStalemate(),
+    isDraw: chess.isDraw(),
+    gameStatus: game.status,
+    pieces: getPiecesFromFen(game.fen)
+  };
+}
+
+async function getHistoryForGame(gameId: string, limit: number) {
+  const game = await db.game.findUnique({ where: { id: gameId } });
+  if (!game || !game.isPublic) throw new Error("Game not found");
+
+  const moves = await db.move.findMany({
+    where: { gameId },
+    orderBy: { ply: "asc" },
+    include: {
+      byUser: { select: { id: true, email: true } }
+    },
+    take: limit
+  });
+
+  return {
+    gameId,
+    moves: moves.map((m) => ({
+      id: m.id,
+      ply: m.ply,
+      san: m.san,
+      from: m.from,
+      to: m.to,
+      byUser: m.byUser,
+      createdAt: m.createdAt
+    }))
+  };
+}
+
 export const toolDefs: ToolDef[] = [
   {
     name: "query_users_by_email",
@@ -345,22 +391,22 @@ export const toolDefs: ToolDef[] = [
     },
     execute: async (args) => {
       const input = gameIdInput.parse(args ?? {});
-      const game = await db.game.findUnique({ where: { id: input.gameId } });
-      if (!game || !game.isPublic) throw new Error("Game not found");
-
-      const chess = new Chess(game.fen);
-
-      return {
-        gameId: game.id,
-        fen: game.fen,
-        turn: chess.turn(),
-        isCheck: chess.isCheck(),
-        isCheckmate: chess.isCheckmate(),
-        isStalemate: chess.isStalemate(),
-        isDraw: chess.isDraw(),
-        gameStatus: game.status,
-        pieces: getPiecesFromFen(game.fen)
-      };
+      return getStatusForGame(input.gameId);
+    }
+  },
+  {
+    name: "get_game_status",
+    description: "Alias for status: get the game status and piece positions.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        gameId: { type: "string" }
+      },
+      required: ["gameId"]
+    },
+    execute: async (args) => {
+      const input = gameIdInput.parse(args ?? {});
+      return getStatusForGame(input.gameId);
     }
   },
   {
@@ -376,30 +422,23 @@ export const toolDefs: ToolDef[] = [
     },
     execute: async (args) => {
       const input = historyInput.parse(args ?? {});
-      const game = await db.game.findUnique({ where: { id: input.gameId } });
-      if (!game || !game.isPublic) throw new Error("Game not found");
-
-      const moves = await db.move.findMany({
-        where: { gameId: input.gameId },
-        orderBy: { ply: "asc" },
-        include: {
-          byUser: { select: { id: true, email: true } }
-        },
-        take: input.limit
-      });
-
-      return {
-        gameId: input.gameId,
-        moves: moves.map((m) => ({
-          id: m.id,
-          ply: m.ply,
-          san: m.san,
-          from: m.from,
-          to: m.to,
-          byUser: m.byUser,
-          createdAt: m.createdAt
-        }))
-      };
+      return getHistoryForGame(input.gameId, input.limit);
+    }
+  },
+  {
+    name: "get_game_history",
+    description: "Alias for history: get chronological move history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        gameId: { type: "string" },
+        limit: { type: "number" }
+      },
+      required: ["gameId"]
+    },
+    execute: async (args) => {
+      const input = historyInput.parse(args ?? {});
+      return getHistoryForGame(input.gameId, input.limit);
     }
   },
   {

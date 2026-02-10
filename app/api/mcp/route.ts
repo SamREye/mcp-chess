@@ -13,7 +13,9 @@ const readOnlyToolNames = new Set([
   "query_users_by_email",
   "snapshot",
   "status",
+  "get_game_status",
   "history",
+  "get_game_history",
   "list_games",
   "get_game",
   "get_chat_messages"
@@ -25,6 +27,46 @@ type JsonRpcRequest = {
   method?: string;
   params?: any;
 };
+
+type ToolContentItem =
+  | {
+      type: "text";
+      text: string;
+    }
+  | {
+      type: "image";
+      data: string;
+      mimeType: string;
+    };
+
+function buildToolContent(name: string, result: unknown): ToolContentItem[] {
+  if (name === "snapshot" && result && typeof result === "object") {
+    const rawDataUrl =
+      "dataUrl" in result && typeof result.dataUrl === "string" ? result.dataUrl : null;
+    const rawMimeType =
+      "mimeType" in result && typeof result.mimeType === "string" ? result.mimeType : null;
+
+    const parsed = parseImageDataUrl(rawDataUrl);
+    if (parsed) {
+      return [
+        {
+          type: "image",
+          data: parsed.base64,
+          mimeType: rawMimeType ?? parsed.mimeType
+        }
+      ];
+    }
+  }
+
+  return [{ type: "text", text: JSON.stringify(result) }];
+}
+
+function parseImageDataUrl(dataUrl: string | null) {
+  if (!dataUrl) return null;
+  const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=_-]+)$/);
+  if (!match) return null;
+  return { mimeType: match[1], base64: match[2] };
+}
 
 function jsonRpcSuccess(id: string | number | null | undefined, result: unknown) {
   return Response.json({
@@ -158,7 +200,7 @@ export async function POST(req: Request) {
       }
 
       return jsonRpcSuccess(id, {
-        content: [{ type: "text", text: JSON.stringify(result) }],
+        content: buildToolContent(name, result),
         structuredContent: result
       });
     }
