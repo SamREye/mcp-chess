@@ -95,7 +95,8 @@ export function assertAllowedClientId(clientId: string) {
 }
 
 export function isValidPkceVerifier(value: string) {
-  return /^[A-Za-z0-9\-._~]{43,128}$/.test(value);
+  const trimmed = value.trim();
+  return trimmed.length >= 32 && trimmed.length <= 512;
 }
 
 export function isValidCodeChallenge(value: string) {
@@ -149,8 +150,8 @@ export async function createAuthorizationCode(input: {
 
 export async function exchangeAuthorizationCode(input: {
   code: string;
-  clientId: string;
-  redirectUri: string;
+  clientId?: string;
+  redirectUri?: string;
   codeVerifier: string;
 }) {
   const codeHash = sha256(input.code);
@@ -179,7 +180,11 @@ export async function exchangeAuthorizationCode(input: {
     throw new Error("invalid_grant");
   }
 
-  if (authCode.clientId !== input.clientId || authCode.redirectUri !== input.redirectUri) {
+  if (input.clientId && authCode.clientId !== input.clientId) {
+    throw new Error("invalid_grant");
+  }
+
+  if (input.redirectUri && authCode.redirectUri !== input.redirectUri) {
     throw new Error("invalid_grant");
   }
 

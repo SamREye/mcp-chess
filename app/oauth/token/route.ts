@@ -24,6 +24,8 @@ function oauthError(error: string, description: string, status = 400) {
 }
 
 async function getTokenRequestBody(req: Request) {
+  const authHeader = req.headers.get("authorization");
+  const basicClientId = parseBasicAuthClientId(authHeader);
   const contentType = req.headers.get("content-type") ?? "";
 
   if (contentType.includes("application/json")) {
@@ -31,7 +33,7 @@ async function getTokenRequestBody(req: Request) {
     return {
       grantType: String(json.grant_type ?? ""),
       code: String(json.code ?? ""),
-      clientId: String(json.client_id ?? ""),
+      clientId: String(json.client_id ?? basicClientId ?? ""),
       redirectUri: String(json.redirect_uri ?? ""),
       codeVerifier: String(json.code_verifier ?? "")
     };
@@ -41,7 +43,7 @@ async function getTokenRequestBody(req: Request) {
   return {
     grantType: String(form.get("grant_type") ?? ""),
     code: String(form.get("code") ?? ""),
-    clientId: String(form.get("client_id") ?? ""),
+    clientId: String(form.get("client_id") ?? basicClientId ?? ""),
     redirectUri: String(form.get("redirect_uri") ?? ""),
     codeVerifier: String(form.get("code_verifier") ?? "")
   };
@@ -57,7 +59,7 @@ export async function POST(req: Request) {
     return oauthError("unsupported_grant_type", "Only authorization_code is supported");
   }
 
-  if (!code || !clientId || !redirectUri || !codeVerifier) {
+  if (!code || !codeVerifier) {
     return oauthError("invalid_request", "Missing required OAuth token fields");
   }
 
@@ -65,17 +67,19 @@ export async function POST(req: Request) {
     return oauthError("invalid_request", "Invalid code_verifier");
   }
 
-  try {
-    assertAllowedClientId(clientId);
-  } catch {
-    return oauthError("unauthorized_client", "Client is not allowed");
+  if (clientId) {
+    try {
+      assertAllowedClientId(clientId);
+    } catch {
+      return oauthError("unauthorized_client", "Client is not allowed");
+    }
   }
 
   try {
     const token = await exchangeAuthorizationCode({
       code,
-      clientId,
-      redirectUri,
+      clientId: clientId || undefined,
+      redirectUri: redirectUri || undefined,
       codeVerifier
     });
 
@@ -99,5 +103,20 @@ export async function POST(req: Request) {
       return oauthError("invalid_grant", "Authorization code is invalid or expired");
     }
     return oauthError("server_error", "Token issuance failed", 500);
+  }
+}
+
+function parseBasicAuthClientId(header: string | null) {
+  if (!header || !header.toLowerCase().startsWith("basic ")) {
+    return null;
+  }
+
+  try {
+    const raw = Buffer.from(header.slice(6).trim(), "base64").toString("utf8");
+    const sep = raw.indexOf(":");
+    const clientId = sep >= 0 ? raw.slice(0, sep) : raw;
+    return clientId.trim() || null;
+  } catch {
+    return null;
   }
 }
