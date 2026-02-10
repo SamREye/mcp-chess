@@ -407,6 +407,70 @@ button.primary:hover {
   color: #991b1b;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(15, 23, 42, 0.38);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.promotion-modal {
+  width: min(440px, 100%);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.25);
+  padding: 1rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.promotion-modal h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.promotion-grid {
+  display: grid;
+  gap: 0.55rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.promotion-option {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.promotion-option:hover {
+  border-color: #9ca3af;
+  background: #f9fafb;
+}
+
+.promotion-piece {
+  font-size: 1.5rem;
+}
+
+.promotion-cancel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  padding: 0.45rem 0.75rem;
+  justify-self: end;
+  cursor: pointer;
+}
+
 @keyframes toast-pop {
   from {
     opacity: 0;

@@ -322,6 +322,7 @@ export const toolDefs: ToolDef[] = [
             san: dbMove.san,
             from: dbMove.from,
             to: dbMove.to,
+            promotion: dbMove.promotion,
             ply: dbMove.ply,
             createdAt: dbMove.createdAt
           },
@@ -339,6 +340,7 @@ export const toolDefs: ToolDef[] = [
         san: result.move.san,
         from: result.move.from,
         to: result.move.to,
+        promotion: result.move.promotion,
         gameStatus: result.gameStatus
       });
       await publishGamesEvent("game.updated", { gameId: input.gameId });

@@ -61,6 +61,7 @@ type ChatData = {
 type MovePieceData = {
   move: {
     to: string;
+    promotion?: "q" | "r" | "b" | "n" | null;
   };
 };
 
@@ -71,8 +72,27 @@ type Toast = {
 };
 
 type MobilePane = "board" | "chat";
+type PromotionPiece = "q" | "r" | "b" | "n";
+type PromotionPrompt = {
+  from: string;
+  to: string;
+  color: "w" | "b";
+};
+
 const MOVE_ANIMATION_MS = 180;
 const CAPTURE_ANIMATION_MS = 360;
+const PROMOTION_LABELS: Record<PromotionPiece, string> = {
+  q: "Queen",
+  r: "Rook",
+  b: "Bishop",
+  n: "Knight"
+};
+const PIECE_SYMBOLS: Record<PromotionPiece, string> = {
+  q: "♛",
+  r: "♜",
+  b: "♝",
+  n: "♞"
+};
 
 function getPiecesFromFen(fen: string): Piece[] {
   const chess = new Chess(fen);
@@ -112,7 +132,7 @@ function buildMovePreview(
   currentStatus: StatusData,
   from: string,
   to: string,
-  promotion: "q" | "r" | "b" | "n" = "q"
+  promotion?: PromotionPiece
 ): { nextStatus: StatusData; moveTo: string; animation: ChessBoardAnimation } | null {
   const moverPiece = currentStatus.pieces.find((piece) => piece.square === from);
   if (!moverPiece) return null;
@@ -187,6 +207,7 @@ export function GameView({
   const [selectedFrom, setSelectedFrom] = useState<string | null>(null);
   const [lastMoveSquare, setLastMoveSquare] = useState<string | null>(null);
   const [recentMoveSquare, setRecentMoveSquare] = useState<string | null>(null);
+  const [promotionPrompt, setPromotionPrompt] = useState<PromotionPrompt | null>(null);
   const [boardAnimation, setBoardAnimation] = useState<ChessBoardAnimation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -345,6 +366,13 @@ export function GameView({
           payload && "from" in payload && typeof payload.from === "string" ? payload.from : null;
         const moveTo =
           payload && "to" in payload && typeof payload.to === "string" ? payload.to : null;
+        const movePromotion =
+          payload &&
+          "promotion" in payload &&
+          typeof payload.promotion === "string" &&
+          ["q", "r", "b", "n"].includes(payload.promotion)
+            ? (payload.promotion as PromotionPiece)
+            : undefined;
         const byUserId =
           payload && "byUserId" in payload && typeof payload.byUserId === "string"
             ? payload.byUserId
@@ -352,7 +380,7 @@ export function GameView({
         const byCurrentUser = Boolean(currentUserId && byUserId === currentUserId);
 
         if (!byCurrentUser && moveFrom && moveTo && statusRef.current) {
-          const preview = buildMovePreview(statusRef.current, moveFrom, moveTo);
+          const preview = buildMovePreview(statusRef.current, moveFrom, moveTo, movePromotion);
           if (preview) {
             void (async () => {
               await playBoardAnimation(preview.animation);
@@ -430,6 +458,21 @@ export function GameView({
     };
   }, []);
 
+  useEffect(() => {
+    if (!promotionPrompt) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setPromotionPrompt(null);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [promotionPrompt]);
+
   const piecesBySquare = useMemo(() => {
     const map = new Map<string, Piece>();
     for (const p of status?.pieces ?? []) {
@@ -504,6 +547,69 @@ export function GameView({
     }, 3200);
   }
 
+  async function submitMove(from: string, to: string, promotion?: PromotionPiece) {
+    if (!status) return;
+
+    const preview = buildMovePreview(status, from, to, promotion);
+    if (!preview) {
+      pushToast("error", "Illegal move.");
+      return;
+    }
+
+    const previousStatus = status;
+    const previousGame = game;
+    const previousLastMove = lastMoveSquare;
+    const moveArgs: { gameId: string; from: string; to: string; promotion?: PromotionPiece } = {
+      gameId,
+      from,
+      to
+    };
+
+    if (promotion) {
+      moveArgs.promotion = promotion;
+    }
+
+    setError(null);
+    await playBoardAnimation(preview.animation);
+    setStatus(preview.nextStatus);
+    setGame((prev) =>
+      prev
+        ? {
+            ...prev,
+            moveCount: prev.moveCount + 1,
+            status: preview.nextStatus.gameStatus
+          }
+        : prev
+    );
+    markRecentMove(preview.moveTo);
+    setIsMovePending(true);
+
+    try {
+      const result = await callMcpTool<MovePieceData>("move_piece", moveArgs);
+      markRecentMove(result.move.to);
+      await refreshBoardState();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Move failed";
+      setError(message);
+      setStatus(previousStatus);
+      setGame(previousGame);
+      setLastMoveSquare(previousLastMove);
+      setRecentMoveSquare(null);
+      setBoardAnimation(null);
+      if (message.includes("Illegal move")) {
+        pushToast(
+          "error",
+          "Illegal move. This move would break chess rules (for example, exposing your king)."
+        );
+      } else if (message.includes("not your turn")) {
+        pushToast("warning", "Not your turn.");
+      }
+      void refreshBoardState();
+    } finally {
+      setIsMovePending(false);
+    }
+  }
+
   async function handleSquareClick(square: string) {
     if (!status || !game?.canMove || !myColor || isMovePending) return;
     if (status.turn !== myColor) {
@@ -533,71 +639,40 @@ export function GameView({
     }
 
     const chess = new Chess(status.fen);
-    const legalTargets = chess
-      .moves({ square: selectedFrom as Square, verbose: true })
-      .map((m) => m.to);
-
-    if (!legalTargets.includes(square as Square)) {
+    const legalMoves = chess.moves({ square: selectedFrom as Square, verbose: true });
+    const matchingMoves = legalMoves.filter((move) => move.to === (square as Square));
+    if (matchingMoves.length === 0) {
       pushToast("warning", "That destination is not legal for the selected piece.");
       return;
     }
 
-    const preview = buildMovePreview(status, selectedFrom, square, "q");
-    if (!preview) {
-      pushToast("error", "Illegal move.");
+    const promotionChoices = Array.from(
+      new Set(
+        matchingMoves
+          .map((move) => move.promotion)
+          .filter((promotion): promotion is PromotionPiece => Boolean(promotion))
+      )
+    );
+    if (promotionChoices.length > 0) {
+      const moverPiece = piecesBySquare.get(selectedFrom);
+      setPromotionPrompt({
+        from: selectedFrom,
+        to: square,
+        color: moverPiece?.color ?? myColor
+      });
       setSelectedFrom(null);
       return;
     }
 
-    const previousStatus = status;
-    const previousGame = game;
-    const previousLastMove = lastMoveSquare;
-
-    setError(null);
     setSelectedFrom(null);
-    await playBoardAnimation(preview.animation);
-    setStatus(preview.nextStatus);
-    setGame((prev) =>
-      prev
-        ? {
-            ...prev,
-            moveCount: prev.moveCount + 1,
-            status: preview.nextStatus.gameStatus
-          }
-        : prev
-    );
-    markRecentMove(preview.moveTo);
-    setIsMovePending(true);
+    await submitMove(selectedFrom, square);
+  }
 
-    try {
-      const result = await callMcpTool<MovePieceData>("move_piece", {
-        gameId,
-        from: selectedFrom,
-        to: square,
-        promotion: "q"
-      });
-      markRecentMove(result.move.to);
-      await refreshBoardState();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Move failed";
-      setError(message);
-      setStatus(previousStatus);
-      setGame(previousGame);
-      setLastMoveSquare(previousLastMove);
-      setRecentMoveSquare(null);
-      setBoardAnimation(null);
-      if (message.includes("Illegal move")) {
-        pushToast(
-          "error",
-          "Illegal move. This move would break chess rules (for example, exposing your king)."
-        );
-      } else if (message.includes("not your turn")) {
-        pushToast("warning", "Not your turn.");
-      }
-      void refreshBoardState();
-    } finally {
-      setIsMovePending(false);
-    }
+  async function handlePromotionSelect(promotion: PromotionPiece) {
+    if (!promotionPrompt) return;
+    const choice = promotionPrompt;
+    setPromotionPrompt(null);
+    await submitMove(choice.from, choice.to, promotion);
   }
 
   async function sendMessage(body: string) {
@@ -693,7 +768,7 @@ export function GameView({
                 recentMoveSquare={recentMoveSquare}
                 animation={boardAnimation}
                 onSquareClick={(sq) => void handleSquareClick(sq)}
-                interactive={isMyTurn && !isMovePending && !boardAnimation}
+                interactive={isMyTurn && !isMovePending && !boardAnimation && !promotionPrompt}
                 orientation={myColor === "b" ? "black" : "white"}
               />
               {((isMovePending && !boardAnimation) || isBoardSyncing) && (
@@ -716,6 +791,41 @@ export function GameView({
           </aside>
         </div>
       </section>
+
+      {promotionPrompt && (
+        <div className="modal-backdrop">
+          <div
+            className="promotion-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="promotion-title"
+          >
+            <h3 id="promotion-title">Choose a promotion piece</h3>
+            <div className="promotion-grid">
+              {(["q", "r", "b", "n"] as PromotionPiece[]).map((promotion) => (
+                <button
+                  key={promotion}
+                  type="button"
+                  className="promotion-option"
+                  onClick={() => void handlePromotionSelect(promotion)}
+                >
+                  <span className={`piece piece-${promotionPrompt.color} promotion-piece`}>
+                    {PIECE_SYMBOLS[promotion]}
+                  </span>
+                  <span>{PROMOTION_LABELS[promotion]}</span>
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="promotion-cancel"
+              onClick={() => setPromotionPrompt(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && <p className="error">{error}</p>}
     </div>
