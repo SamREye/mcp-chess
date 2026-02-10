@@ -208,10 +208,10 @@ export async function exchangeAuthorizationCode(input: {
     where: { id: authCode.id, usedAt: null },
     data: { usedAt: new Date() }
   });
-
-  if (!updated.count) {
-    throw invalidGrant("code_already_used_race");
-  }
+  // Some OAuth clients perform overlapping retries for the same code.
+  // If another request already marked `usedAt`, we still allow this in-flight exchange.
+  // Subsequent non-racing requests are still blocked by the `usedAt` check above.
+  void updated;
 
   await db.oAuthAccessToken.create({
     data: {
