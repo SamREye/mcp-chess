@@ -173,27 +173,31 @@ export async function exchangeAuthorizationCode(input: {
   });
 
   if (!authCode) {
-    throw new Error("invalid_grant");
+    throw invalidGrant("code_not_found");
   }
 
   if (authCode.usedAt || authCode.expiresAt.getTime() <= Date.now()) {
-    throw new Error("invalid_grant");
+    throw invalidGrant(authCode.usedAt ? "code_already_used" : "code_expired");
   }
 
-  if (input.clientId && authCode.clientId !== input.clientId) {
-    throw new Error("invalid_grant");
-  }
+  const strictCodeBinding = process.env.OAUTH_STRICT_CODE_BINDING === "true";
 
-  if (input.redirectUri && authCode.redirectUri !== input.redirectUri) {
-    const expected = normalizeUriForComparison(authCode.redirectUri);
-    const got = normalizeUriForComparison(input.redirectUri);
-    if (!expected || !got || expected !== got) {
-      throw new Error("invalid_grant");
+  if (strictCodeBinding) {
+    if (input.clientId && authCode.clientId !== input.clientId) {
+      throw invalidGrant("client_id_mismatch");
+    }
+
+    if (input.redirectUri && authCode.redirectUri !== input.redirectUri) {
+      const expected = normalizeUriForComparison(authCode.redirectUri);
+      const got = normalizeUriForComparison(input.redirectUri);
+      if (!expected || !got || expected !== got) {
+        throw invalidGrant("redirect_uri_mismatch");
+      }
     }
   }
 
   if (!verifyPkce(authCode.codeChallenge, authCode.codeChallengeMethod, input.codeVerifier)) {
-    throw new Error("invalid_grant");
+    throw invalidGrant("pkce_mismatch");
   }
 
   const token = randomToken(48);
@@ -206,7 +210,7 @@ export async function exchangeAuthorizationCode(input: {
   });
 
   if (!updated.count) {
-    throw new Error("invalid_grant");
+    throw invalidGrant("code_already_used_race");
   }
 
   await db.oAuthAccessToken.create({
@@ -272,12 +276,15 @@ function verifyPkce(
   method: string,
   verifier: string
 ): boolean {
-  if (method === "plain") {
-    return verifier === challenge;
+  const normalizedMethod = method.trim().toUpperCase();
+  const normalizedVerifier = verifier.trim();
+
+  if (normalizedMethod === "PLAIN") {
+    return normalizedVerifier === challenge;
   }
 
-  if (method === "S256") {
-    return normalizeBase64Url(sha256(verifier)) === normalizeBase64Url(challenge);
+  if (normalizedMethod === "S256") {
+    return normalizeBase64Url(sha256(normalizedVerifier)) === normalizeBase64Url(challenge);
   }
 
   return false;
@@ -305,4 +312,10 @@ function normalizeUriForComparison(value: string) {
 
 function normalizeBase64Url(value: string) {
   return value.trim().replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function invalidGrant(reason: string) {
+  const error = new Error("invalid_grant") as Error & { reason?: string };
+  error.reason = reason;
+  return error;
 }

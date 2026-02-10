@@ -192,11 +192,19 @@ export async function POST(req: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "invalid_grant";
     if (message === "invalid_grant") {
+      const reason =
+        typeof error === "object" &&
+        error !== null &&
+        "reason" in error &&
+        typeof (error as { reason?: unknown }).reason === "string"
+          ? (error as { reason: string }).reason
+          : "unknown";
       if (process.env.OAUTH_DEBUG === "true") {
         console.warn("[oauth/token] invalid_grant", {
           hasClientId: Boolean(clientId),
           hasRedirectUri: Boolean(redirectUri),
-          verifierLength: codeVerifier.length
+          verifierLength: codeVerifier.length,
+          reason
         });
       }
       return oauthError(req, "invalid_grant", "Authorization code is invalid or expired");
