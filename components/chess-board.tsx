@@ -62,6 +62,16 @@ export function ChessBoard({
               }`}
               title={square}
             >
+              {fileIdx === 0 ? (
+                <span className={`coord coord-rank ${isLight ? "coord-on-light" : "coord-on-dark"}`}>
+                  {rank}
+                </span>
+              ) : null}
+              {rankIdx === 7 ? (
+                <span className={`coord coord-file ${isLight ? "coord-on-light" : "coord-on-dark"}`}>
+                  {file.toUpperCase()}
+                </span>
+              ) : null}
               {piece ? (
                 <span className={`piece piece-${piece.color}`}>{symbols[piece.type]}</span>
               ) : (

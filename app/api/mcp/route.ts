@@ -41,10 +41,23 @@ type ToolContentItem =
 
 function buildToolContent(name: string, result: unknown): ToolContentItem[] {
   if (name === "snapshot" && result && typeof result === "object") {
-    const rawDataUrl =
-      "dataUrl" in result && typeof result.dataUrl === "string" ? result.dataUrl : null;
+    const rawData =
+      "data" in result && typeof result.data === "string" ? result.data.trim() : null;
     const rawMimeType =
       "mimeType" in result && typeof result.mimeType === "string" ? result.mimeType : null;
+
+    if (rawData && rawMimeType?.startsWith("image/")) {
+      return [
+        {
+          type: "image",
+          data: rawData,
+          mimeType: rawMimeType
+        }
+      ];
+    }
+
+    const rawDataUrl =
+      "dataUrl" in result && typeof result.dataUrl === "string" ? result.dataUrl : null;
 
     const parsed = parseImageDataUrl(rawDataUrl);
     if (parsed) {

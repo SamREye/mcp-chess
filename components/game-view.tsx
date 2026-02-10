@@ -318,8 +318,20 @@ export function GameView({
   async function loadSnapshot() {
     setError(null);
     try {
-      const snap = await callMcpTool<{ dataUrl: string }>("snapshot", { gameId, size: 560 });
-      setSnapshotUrl(snap.dataUrl);
+      const snap = await callMcpTool<{
+        dataUrl?: string;
+        data?: string;
+        mimeType?: string;
+      }>("snapshot", { gameId, size: 560 });
+      if (snap.dataUrl) {
+        setSnapshotUrl(snap.dataUrl);
+        return;
+      }
+      if (snap.data && snap.mimeType) {
+        setSnapshotUrl(`data:${snap.mimeType};base64,${snap.data}`);
+        return;
+      }
+      throw new Error("Snapshot payload missing image data");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Snapshot failed");
     }

@@ -375,7 +375,7 @@ export const toolDefs: ToolDef[] = [
       return {
         gameId: game.id,
         mimeType: "image/svg+xml",
-        dataUrl: `data:image/svg+xml;base64,${base64}`
+        data: base64
       };
     }
   },
