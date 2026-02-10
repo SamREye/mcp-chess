@@ -4,8 +4,9 @@ import { z } from "zod";
 
 import { publishGameEvent, publishGamesEvent } from "@/lib/ably-server";
 import { db } from "@/lib/db";
-import { getPiecesFromFen, renderBoardSvg } from "@/lib/chess-utils";
+import { getPiecesFromFen } from "@/lib/chess-utils";
 import { sendGameInvitationEmail } from "@/lib/email";
+import { getSnapshotPath, getSnapshotVersion } from "@/lib/snapshot";
 
 type ToolContext = {
   userId: string | null;
@@ -369,13 +370,14 @@ export const toolDefs: ToolDef[] = [
       const game = await db.game.findUnique({ where: { id: input.gameId } });
       if (!game || !game.isPublic) throw new Error("Game not found");
 
-      const svg = renderBoardSvg(game.fen, input.size);
-      const base64 = Buffer.from(svg).toString("base64");
+      const version = getSnapshotVersion(game.updatedAt);
+      const snapshotPath = getSnapshotPath(game.id, version, input.size);
 
       return {
         gameId: game.id,
-        mimeType: "image/svg+xml",
-        data: base64
+        version,
+        snapshotPath,
+        mimeType: "image/svg+xml"
       };
     }
   },

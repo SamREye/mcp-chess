@@ -319,10 +319,20 @@ export function GameView({
     setError(null);
     try {
       const snap = await callMcpTool<{
+        snapshotUrl?: string;
+        snapshotPath?: string;
         dataUrl?: string;
         data?: string;
         mimeType?: string;
       }>("snapshot", { gameId, size: 560 });
+      if (snap.snapshotUrl) {
+        setSnapshotUrl(snap.snapshotUrl);
+        return;
+      }
+      if (snap.snapshotPath) {
+        setSnapshotUrl(snap.snapshotPath);
+        return;
+      }
       if (snap.dataUrl) {
         setSnapshotUrl(snap.dataUrl);
         return;

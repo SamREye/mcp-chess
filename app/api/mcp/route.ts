@@ -39,8 +39,55 @@ type ToolContentItem =
       mimeType: string;
     };
 
+function enrichSnapshotResult(name: string, result: unknown, baseUrl: string) {
+  if (name !== "snapshot" || !result || typeof result !== "object") {
+    return result;
+  }
+
+  const snapshotPath =
+    "snapshotPath" in result && typeof result.snapshotPath === "string"
+      ? result.snapshotPath
+      : null;
+  if (!snapshotPath) {
+    return result;
+  }
+
+  const snapshotUrl = /^https?:\/\//i.test(snapshotPath)
+    ? snapshotPath
+    : `${baseUrl}${snapshotPath.startsWith("/") ? snapshotPath : `/${snapshotPath}`}`;
+
+  return {
+    ...(result as Record<string, unknown>),
+    snapshotUrl,
+    markdown: `![Chess board snapshot](${snapshotUrl})`
+  };
+}
+
+function sanitizeStructuredContent(name: string, result: unknown) {
+  if (name !== "snapshot" || !result || typeof result !== "object") {
+    return result;
+  }
+
+  const { data, dataUrl, ...rest } = result as Record<string, unknown>;
+  void data;
+  void dataUrl;
+  return rest;
+}
+
 function buildToolContent(name: string, result: unknown): ToolContentItem[] {
   if (name === "snapshot" && result && typeof result === "object") {
+    const markdown =
+      "markdown" in result && typeof result.markdown === "string" ? result.markdown : null;
+    if (markdown) {
+      return [{ type: "text", text: markdown }];
+    }
+
+    const snapshotUrl =
+      "snapshotUrl" in result && typeof result.snapshotUrl === "string" ? result.snapshotUrl : null;
+    if (snapshotUrl) {
+      return [{ type: "text", text: `![Chess board snapshot](${snapshotUrl})` }];
+    }
+
     const rawData =
       "data" in result && typeof result.data === "string" ? result.data.trim() : null;
     const rawMimeType =
@@ -109,7 +156,6 @@ function jsonRpcError(
 }
 
 export async function GET(req: Request) {
-  const baseUrl = getBaseUrl(req);
   return Response.json({
     name: "mcp-chess",
     protocol: "JSON-RPC 2.0",
@@ -212,9 +258,10 @@ export async function POST(req: Request) {
         throw error;
       }
 
+      const resultWithSnapshotUrl = enrichSnapshotResult(name, result, getBaseUrl(req));
       return jsonRpcSuccess(id, {
-        content: buildToolContent(name, result),
-        structuredContent: result
+        content: buildToolContent(name, resultWithSnapshotUrl),
+        structuredContent: sanitizeStructuredContent(name, resultWithSnapshotUrl)
       });
     }
 

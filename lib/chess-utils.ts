@@ -72,8 +72,10 @@ export function renderBoardSvg(fen: string, size = 560): string {
       const key = piece.color === "w" ? piece.type.toUpperCase() : piece.type;
       const symbol = pieceToUnicode[key];
       const label = `${files[fileIndex]}${rank}`;
+      const pieceFill = piece.color === "w" ? "#fffdf8" : "#111111";
+      const pieceStroke = piece.color === "w" ? "#4b3a2a" : "#000000";
 
-      out += `<text x='${x + square / 2}' y='${y + square * 0.66}' text-anchor='middle' font-size='${square * 0.72}' font-family='\"Times New Roman\", serif'>${symbol}</text>`;
+      out += `<text x='${x + square / 2}' y='${y + square * 0.66}' text-anchor='middle' font-size='${square * 0.72}' font-family='\"Times New Roman\", serif' fill='${pieceFill}' stroke='${pieceStroke}' stroke-width='${square * 0.03}' paint-order='stroke fill'>${symbol}</text>`;
       out += `<title>${label}</title>`;
     }
   }
