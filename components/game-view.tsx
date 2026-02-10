@@ -415,12 +415,6 @@ export function GameView({
               interactive={isMyTurn}
               orientation={myColor === "b" ? "black" : "white"}
             />
-
-            <p className="muted">
-              {isMyTurn
-                ? "Select one of your pieces, then a destination square."
-                : "Board is locked until your turn."}
-            </p>
           </>
         )}
 
