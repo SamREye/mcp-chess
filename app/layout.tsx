@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import "@/app/globals.css";
+import { Avatar } from "@/components/avatar";
 import { auth } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -14,23 +16,32 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await auth();
+  const identityTitle = session?.user?.email ?? session?.user?.name ?? "Signed in";
 
   return (
     <html lang="en">
       <body>
         <div className="page-shell">
           <header className="topbar">
-            <div className="brand">
+            <div className="topbar-left">
+              <Link href="/" className="topbar-back">
+                ← Back
+              </Link>
+            </div>
+            <div className="brand brand-center">
               <h1>MCP Chess</h1>
             </div>
-            <nav className="topnav">
+            <nav className="topnav topbar-right">
               {session?.user ? (
                 <>
-                  <span className="muted">
-                    {session.user.name
-                      ? `${session.user.name} (${session.user.email ?? "no-email"})`
-                      : (session.user.email ?? "Signed in")}
-                  </span>
+                  <Avatar
+                    email={session.user.email}
+                    name={session.user.name}
+                    image={session.user.image}
+                    fallback="?"
+                    className="avatar-self"
+                    title={identityTitle}
+                  />
                   <form action="/api/auth/signout" method="post">
                     <button type="submit">Sign out</button>
                   </form>

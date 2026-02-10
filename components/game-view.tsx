@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chess } from "chess.js";
 import type { Square } from "chess.js";
 import * as Ably from "ably";
 
+import { Avatar } from "@/components/avatar";
 import { ChessBoard } from "@/components/chess-board";
 import { ChatPanel } from "@/components/chat-panel";
 import { callMcpTool } from "@/lib/mcp-client";
@@ -19,8 +19,8 @@ type Piece = {
 type GameData = {
   game: {
     id: string;
-    white: { id: string; email: string | null };
-    black: { id: string; email: string | null };
+    white: { id: string; email: string | null; image: string | null };
+    black: { id: string; email: string | null; image: string | null };
     status: string;
     moveCount: number;
     chatCount: number;
@@ -44,13 +44,7 @@ type StatusData = {
 
 type HistoryData = {
   moves: Array<{
-    id: string;
-    ply: number;
-    san: string;
-    from: string;
     to: string;
-    createdAt: string;
-    byUser: { id: string; email: string | null };
   }>;
 };
 
@@ -59,18 +53,13 @@ type ChatData = {
     id: string;
     body: string;
     createdAt: string;
-    user: { id: string; email: string | null };
+    user: { id: string; email: string | null; image: string | null };
   }>;
 };
 
 type MovePieceData = {
   move: {
-    id: string;
-    san: string;
-    from: string;
     to: string;
-    ply: number;
-    createdAt: string;
   };
 };
 
@@ -80,7 +69,7 @@ type Toast = {
   message: string;
 };
 
-type GameTab = "board" | "history" | "chat";
+type MobilePane = "board" | "chat";
 
 function getPiecesFromFen(fen: string): Piece[] {
   const chess = new Chess(fen);
@@ -104,10 +93,6 @@ function getPiecesFromFen(fen: string): Piece[] {
   return pieces;
 }
 
-function getLastMoveDestination(moves: HistoryData["moves"]) {
-  return moves.length ? moves[moves.length - 1].to : null;
-}
-
 export function GameView({
   gameId,
   currentUserId
@@ -117,31 +102,25 @@ export function GameView({
 }) {
   const [game, setGame] = useState<GameData["game"] | null>(null);
   const [status, setStatus] = useState<StatusData | null>(null);
-  const [history, setHistory] = useState<HistoryData["moves"]>([]);
   const [messages, setMessages] = useState<ChatData["messages"]>([]);
   const [selectedFrom, setSelectedFrom] = useState<string | null>(null);
   const [lastMoveSquare, setLastMoveSquare] = useState<string | null>(null);
   const [recentMoveSquare, setRecentMoveSquare] = useState<string | null>(null);
-  const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMovePending, setIsMovePending] = useState(false);
   const [isBoardSyncing, setIsBoardSyncing] = useState(false);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
-  const [isSnapshotLoading, setIsSnapshotLoading] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [activeTab, setActiveTab] = useState<GameTab>("board");
+  const [mobilePane, setMobilePane] = useState<MobilePane>("board");
   const [unreadCount, setUnreadCount] = useState(0);
   const toastIdRef = useRef(0);
-  const activeTabRef = useRef<GameTab>("board");
   const recentMoveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const markRecentMove = useCallback((square: string | null) => {
     if (!square) return;
     setLastMoveSquare(square);
     setRecentMoveSquare(square);
-
     if (recentMoveTimerRef.current) {
       clearTimeout(recentMoveTimerRef.current);
     }
@@ -153,21 +132,17 @@ export function GameView({
   const loadInitial = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setIsHistoryLoading(true);
     setIsChatLoading(true);
-
     try {
       const [g, s, h, c] = await Promise.all([
         callMcpTool<GameData>("get_game", { gameId }),
         callMcpTool<StatusData>("status", { gameId }),
-        callMcpTool<HistoryData>("history", { gameId }),
+        callMcpTool<HistoryData>("history", { gameId, limit: 1 }),
         callMcpTool<ChatData>("get_chat_messages", { gameId, limit: 80 })
       ]);
-
       setGame(g.game);
       setStatus(s);
-      setHistory(h.moves);
-      setLastMoveSquare(getLastMoveDestination(h.moves));
+      setLastMoveSquare(h.moves[0]?.to ?? null);
       setRecentMoveSquare(null);
       setMessages(c.messages);
       setUnreadCount(0);
@@ -175,40 +150,31 @@ export function GameView({
       setError(err instanceof Error ? err.message : "Failed to load game");
     } finally {
       setLoading(false);
-      setIsHistoryLoading(false);
       setIsChatLoading(false);
     }
   }, [gameId]);
 
   const refreshBoardState = useCallback(async () => {
     setIsBoardSyncing(true);
-    setIsHistoryLoading(true);
-
     try {
       const [g, s, h] = await Promise.all([
         callMcpTool<GameData>("get_game", { gameId }),
         callMcpTool<StatusData>("status", { gameId }),
-        callMcpTool<HistoryData>("history", { gameId })
+        callMcpTool<HistoryData>("history", { gameId, limit: 1 })
       ]);
-
       setGame(g.game);
       setStatus(s);
-      setHistory(h.moves);
-      setLastMoveSquare(getLastMoveDestination(h.moves));
+      setLastMoveSquare(h.moves[0]?.to ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to refresh game state");
     } finally {
       setIsBoardSyncing(false);
-      setIsHistoryLoading(false);
     }
   }, [gameId]);
 
   const refreshChat = useCallback(
     async (showLoader = false) => {
-      if (showLoader) {
-        setIsChatLoading(true);
-      }
-
+      if (showLoader) setIsChatLoading(true);
       try {
         const chat = await callMcpTool<ChatData>("get_chat_messages", {
           gameId,
@@ -218,9 +184,7 @@ export function GameView({
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load chat");
       } finally {
-        if (showLoader) {
-          setIsChatLoading(false);
-        }
+        if (showLoader) setIsChatLoading(false);
       }
     },
     [gameId]
@@ -231,11 +195,10 @@ export function GameView({
   }, [loadInitial]);
 
   useEffect(() => {
-    activeTabRef.current = activeTab;
-    if (activeTab === "chat") {
+    if (mobilePane === "chat") {
       setUnreadCount(0);
     }
-  }, [activeTab]);
+  }, [mobilePane]);
 
   useEffect(() => {
     const client = new Ably.Realtime({
@@ -247,17 +210,14 @@ export function GameView({
 
     const onMessage = (message: Ably.Message) => {
       if (message.name === "chat.created") {
-        if (activeTabRef.current === "chat") {
-          void refreshChat();
-        } else {
-          const byCurrentUser =
-            typeof message.data === "object" &&
-            message.data !== null &&
-            "userId" in message.data &&
-            message.data.userId === currentUserId;
-          if (!byCurrentUser) {
-            setUnreadCount((count) => count + 1);
-          }
+        void refreshChat();
+        const byCurrentUser =
+          typeof message.data === "object" &&
+          message.data !== null &&
+          "userId" in message.data &&
+          message.data.userId === currentUserId;
+        if (!byCurrentUser && mobilePane !== "chat") {
+          setUnreadCount((count) => count + 1);
         }
         return;
       }
@@ -300,7 +260,7 @@ export function GameView({
         // Ignore teardown errors if connection is already closed.
       }
     };
-  }, [gameId, currentUserId, markRecentMove, refreshBoardState, refreshChat]);
+  }, [gameId, currentUserId, markRecentMove, mobilePane, refreshBoardState, refreshChat]);
 
   useEffect(() => {
     return () => {
@@ -336,26 +296,44 @@ export function GameView({
   const canPlay = Boolean(game?.canMove && myColor && isGameActive);
   const isMyTurn = Boolean(canPlay && status?.turn === myColor);
 
-  const gameResultMessage = useMemo(() => {
-    if (!status || isGameActive) return null;
+  const statusMessage = useMemo(() => {
+    if (!status) return "";
 
     if (status.isCheckmate) {
-      const winner = status.turn === "w" ? game?.black : game?.white;
-      return `Checkmate. Winner: ${winner?.email ?? winner?.id ?? "Unknown player"}.`;
+      if (myColor) {
+        const winnerColor = status.turn === "w" ? "b" : "w";
+        return `Check mate! You ${winnerColor === myColor ? "win" : "lose"}!`;
+      }
+      return "Check mate!";
     }
 
     if (status.isDraw || status.isStalemate) {
       return "Game over: Draw.";
     }
 
-    return "Game finished.";
-  }, [status, isGameActive, game]);
-
-  useEffect(() => {
-    if (!isMyTurn || activeTab !== "board") {
-      setSelectedFrom(null);
+    if (isMyTurn) {
+      return status.isCheck ? "Check! Your turn to move" : "Your turn to move";
     }
-  }, [isMyTurn, activeTab]);
+
+    if (canPlay) {
+      return status.isCheck ? "Check! Opponent to move" : "Waiting for opponent to move";
+    }
+
+    if (!isGameActive) {
+      return "Game finished.";
+    }
+
+    return "Viewing game";
+  }, [status, isMyTurn, canPlay, isGameActive, myColor]);
+
+  const statusClassName = useMemo(() => {
+    if (!status) return "spectator-turn";
+    if (status.isCheckmate) return "waiting-turn";
+    if (status.isDraw || status.isStalemate) return "spectator-turn";
+    if (isMyTurn) return "my-turn";
+    if (canPlay) return "waiting-turn";
+    return "spectator-turn";
+  }, [status, isMyTurn, canPlay]);
 
   function pushToast(level: Toast["level"], message: string) {
     const id = toastIdRef.current + 1;
@@ -417,11 +395,14 @@ export function GameView({
     }
 
     const previousStatus = status;
-    const previousHistory = history;
     const previousGame = game;
     const previousLastMove = lastMoveSquare;
     const optimisticFen = optimistic.fen();
-    const optimisticStatus: StatusData = {
+
+    setError(null);
+    setSelectedFrom(null);
+    markRecentMove(square);
+    setStatus({
       ...status,
       fen: optimisticFen,
       turn: optimistic.turn(),
@@ -431,28 +412,13 @@ export function GameView({
       isDraw: optimistic.isDraw(),
       gameStatus: optimistic.isGameOver() ? "FINISHED" : "ACTIVE",
       pieces: getPiecesFromFen(optimisticFen)
-    };
-    const optimisticHistoryMove: HistoryData["moves"][number] = {
-      id: `optimistic-${Date.now()}`,
-      ply: (history[history.length - 1]?.ply ?? 0) + 1,
-      san: optimisticMove.san,
-      from: selectedFrom,
-      to: square,
-      createdAt: new Date().toISOString(),
-      byUser: { id: currentUserId ?? "unknown", email: currentUserEmail ?? null }
-    };
-
-    setError(null);
-    setSelectedFrom(null);
-    markRecentMove(square);
-    setStatus(optimisticStatus);
-    setHistory((prev) => [...prev, optimisticHistoryMove]);
+    });
     setGame((prev) =>
       prev
         ? {
             ...prev,
             moveCount: prev.moveCount + 1,
-            status: optimisticStatus.gameStatus
+            status: optimistic.isGameOver() ? "FINISHED" : "ACTIVE"
           }
         : prev
     );
@@ -471,7 +437,6 @@ export function GameView({
       const message = err instanceof Error ? err.message : "Move failed";
       setError(message);
       setStatus(previousStatus);
-      setHistory(previousHistory);
       setGame(previousGame);
       setLastMoveSquare(previousLastMove);
       setRecentMoveSquare(null);
@@ -494,33 +459,8 @@ export function GameView({
       gameId,
       body
     });
-
     await refreshChat(true);
     setUnreadCount(0);
-  }
-
-  async function loadSnapshot() {
-    setError(null);
-    setIsSnapshotLoading(true);
-    try {
-      const snap = await callMcpTool<{
-        snapshotUrl?: string;
-        snapshotPath?: string;
-      }>("snapshot", { gameId, size: 560 });
-      if (snap.snapshotUrl) {
-        setSnapshotUrl(snap.snapshotUrl);
-        return;
-      }
-      if (snap.snapshotPath) {
-        setSnapshotUrl(snap.snapshotPath);
-        return;
-      }
-      throw new Error("Snapshot URL missing from payload");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Snapshot failed");
-    } finally {
-      setIsSnapshotLoading(false);
-    }
   }
 
   if (loading) {
@@ -532,7 +472,7 @@ export function GameView({
   }
 
   return (
-    <div className="stack" style={{ marginTop: "1rem" }}>
+    <div className="stack game-view">
       <div className="toast-stack" aria-live="polite">
         {toasts.map((toast) => (
           <div
@@ -544,80 +484,61 @@ export function GameView({
         ))}
       </div>
 
-      <Link href="/" className="crumb-link">
-        ← Back to games
-      </Link>
-
-      <section className="panel stack">
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <h2 style={{ margin: 0 }}>
-            {game.white.email ?? game.white.id} vs {game.black.email ?? game.black.id}
-          </h2>
-          <strong>{status.gameStatus}</strong>
+      <section className="panel stack game-panel">
+        <div className="game-head-row">
+          <div className="game-head">
+            <div className="game-head-player">
+              <Avatar
+                email={game.white.email}
+                image={game.white.image}
+                fallback="W"
+                className="avatar-player"
+                title={game.white.email ?? game.white.id}
+              />
+              <span className="muted">White</span>
+            </div>
+            <span className="game-head-vs">vs</span>
+            <div className="game-head-player">
+              <Avatar
+                email={game.black.email}
+                image={game.black.image}
+                fallback="B"
+                className="avatar-player"
+                title={game.black.email ?? game.black.id}
+              />
+              <span className="muted">Black</span>
+            </div>
+          </div>
+          <div className={`turn-banner game-status-pill ${statusClassName}`}>
+            {statusMessage}
+            {(isMovePending || isBoardSyncing) && (
+              <span className="inline-loader">
+                {isMovePending ? " Applying move..." : " Syncing..."}
+              </span>
+            )}
+          </div>
         </div>
 
-        <p className="muted">
-          Turn: {status.turn === "w" ? "White" : "Black"} • Moves: {game.moveCount}
-          {(isMovePending || isBoardSyncing) && (
-            <span className="inline-loader">{isMovePending ? "Applying move..." : " Syncing..."}</span>
-          )}
-        </p>
-
-        {gameResultMessage && <div className="game-result-banner">{gameResultMessage}</div>}
-
-        <div className="tabs">
+        <div className="mobile-switch">
           <button
-            className={`tab ${activeTab === "board" ? "active" : ""}`}
             type="button"
-            onClick={() => setActiveTab("board")}
+            className={`mobile-switch-btn ${mobilePane === "board" ? "active" : ""}`}
+            onClick={() => setMobilePane("board")}
           >
             Board
           </button>
           <button
-            className={`tab ${activeTab === "history" ? "active" : ""}`}
             type="button"
-            onClick={() => setActiveTab("history")}
-          >
-            Move History
-            {isHistoryLoading && <span className="tab-badge tab-badge-loading">...</span>}
-          </button>
-          <button
-            className={`tab ${activeTab === "chat" ? "active" : ""}`}
-            type="button"
-            onClick={() => setActiveTab("chat")}
+            className={`mobile-switch-btn ${mobilePane === "chat" ? "active" : ""}`}
+            onClick={() => setMobilePane("chat")}
           >
             Chat
-            {isChatLoading ? (
-              <span className="tab-badge tab-badge-loading">...</span>
-            ) : (
-              unreadCount > 0 && <span className="tab-badge">{unreadCount}</span>
-            )}
+            {unreadCount > 0 && <span className="tab-badge">{unreadCount}</span>}
           </button>
         </div>
 
-        {activeTab === "board" && (
-          <>
-            {canPlay ? (
-              isMyTurn ? (
-                <div className="turn-banner my-turn">Your turn to move</div>
-              ) : (
-                <div className="turn-banner waiting-turn">
-                  Not your turn. Waiting for opponent.
-                </div>
-              )
-            ) : (
-              <div className="turn-banner spectator-turn">
-                You can view this game, but only the two players can move.
-              </div>
-            )}
-
-            <div className="row">
-              {status.isCheck && <span>Check</span>}
-              {status.isCheckmate && <span>Checkmate</span>}
-              {status.isStalemate && <span>Stalemate</span>}
-              {status.isDraw && <span>Draw</span>}
-            </div>
-
+        <div className="game-main">
+          <section className={`game-board-pane ${mobilePane === "board" ? "is-active" : ""}`}>
             <div className="board-wrap">
               <ChessBoard
                 pieces={status.pieces}
@@ -635,58 +556,17 @@ export function GameView({
                 </div>
               )}
             </div>
-          </>
-        )}
+          </section>
 
-        {activeTab === "history" && (
-          <>
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <h3 style={{ margin: 0 }}>History</h3>
-              <button
-                type="button"
-                className="primary"
-                onClick={() => void loadSnapshot()}
-                disabled={isSnapshotLoading}
-              >
-                {isSnapshotLoading ? "Loading..." : "Snapshot"}
-              </button>
-            </div>
-
-            {isHistoryLoading && <p className="muted">Loading history...</p>}
-
-            {history.length === 0 ? (
-              <p className="muted">No moves yet.</p>
-            ) : (
-              <ul className="game-list">
-                {history.map((m) => (
-                  <li key={m.id}>
-                    <strong>
-                      {m.ply}. {m.san}
-                    </strong>
-                    <p className="muted">
-                      {m.byUser.email ?? m.byUser.id} • {new Date(m.createdAt).toLocaleString()}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {snapshotUrl && (
-              <img src={snapshotUrl} alt="Chess board snapshot" className="snapshot" />
-            )}
-          </>
-        )}
-
-        {activeTab === "chat" && (
-          <>
+          <aside className={`game-chat-pane ${mobilePane === "chat" ? "is-active" : ""}`}>
             {isChatLoading && <p className="muted">Loading chat...</p>}
             <ChatPanel
               messages={messages}
               canSend={Boolean(game.canMove && currentUserId)}
               onSend={sendMessage}
             />
-          </>
-        )}
+          </aside>
+        </div>
       </section>
 
       {error && <p className="error">{error}</p>}

@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import type { KeyboardEvent } from "react";
+
+import { Avatar } from "@/components/avatar";
 
 type Message = {
   id: string;
@@ -9,6 +12,7 @@ type Message = {
   user: {
     id: string;
     email: string | null;
+    image: string | null;
   };
 };
 
@@ -35,6 +39,13 @@ export function ChatPanel({
     }
   }
 
+  function handleInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter" || event.shiftKey) return;
+    event.preventDefault();
+    if (sending || !body.trim()) return;
+    void submit();
+  }
+
   return (
     <section className="panel stack">
       <h3 style={{ margin: 0 }}>Game Chat</h3>
@@ -42,13 +53,23 @@ export function ChatPanel({
         {messages.length === 0 ? (
           <p className="muted">No chat messages yet.</p>
         ) : (
-          messages.map((msg) => (
-            <div key={msg.id} className="chat-msg">
-              <strong>{msg.user.email ?? msg.user.id}</strong>
-              <p style={{ margin: "0.2rem 0" }}>{msg.body}</p>
-              <p className="muted">{new Date(msg.createdAt).toLocaleString()}</p>
+          messages.map((msg) => {
+            const timestamp = new Date(msg.createdAt).toLocaleString();
+            return (
+              <div key={msg.id} className="chat-msg" title={timestamp}>
+              <Avatar
+                email={msg.user.email}
+                image={msg.user.image}
+                fallback="?"
+                className="avatar-chat"
+                title={msg.user.email ?? msg.user.id}
+              />
+              <div className="chat-msg-content">
+                <p style={{ margin: "0.2rem 0" }}>{msg.body}</p>
+              </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -57,6 +78,7 @@ export function ChatPanel({
           <input
             value={body}
             onChange={(e) => setBody(e.target.value)}
+            onKeyDown={handleInputKeyDown}
             placeholder="Type a message"
             style={{ flex: 1 }}
           />
