@@ -38,21 +38,20 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem;
+  padding: 0.6rem 0.85rem;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
 }
 
-.topbar h1 {
-  margin: 0;
-  font-size: 1.4rem;
+.brand {
+  display: flex;
+  align-items: center;
 }
 
-.topbar p {
-  margin: 0.25rem 0 0;
-  color: var(--muted);
-  font-size: 0.92rem;
+.topbar h1 {
+  margin: 0;
+  font-size: 1.2rem;
 }
 
 .topnav {
@@ -66,10 +65,20 @@ a {
   border: 1px solid var(--line);
   background: #fff;
   color: var(--text);
-  padding: 0.45rem 0.75rem;
+  padding: 0.35rem 0.62rem;
   border-radius: 8px;
   text-decoration: none;
   cursor: pointer;
+}
+
+.crumb-link {
+  width: fit-content;
+  text-decoration: none;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.34rem 0.62rem;
 }
 
 .panel {
@@ -127,6 +136,10 @@ a {
   line-height: 1;
   background: #ef4444;
   color: #fff;
+}
+
+.tab-badge-loading {
+  background: #64748b;
 }
 
 input,
@@ -296,6 +309,7 @@ button.primary:hover {
   line-height: 1;
   user-select: none;
   pointer-events: none;
+  z-index: 1;
 }
 
 .coord-rank {
@@ -350,8 +364,86 @@ button.primary:hover {
   outline-offset: -3px;
 }
 
+.square.last-move {
+  box-shadow: inset 0 0 0 4px #facc15;
+}
+
+.square.last-move::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 3px solid rgba(250, 204, 21, 0.9);
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(17, 24, 39, 0.28);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.square.last-move-recent::after {
+  animation: last-move-pulse 750ms ease-out 2;
+}
+
 .square:disabled {
   cursor: default;
+}
+
+.board-wrap {
+  width: fit-content;
+  position: relative;
+}
+
+.board-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.42);
+  color: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.94rem;
+  border-radius: 2px;
+}
+
+.loader-dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 999px;
+  background: #f8fafc;
+  animation: pulse 900ms ease-in-out infinite;
+}
+
+.inline-loader {
+  margin-left: 0.5rem;
+  color: #0f766e;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes last-move-pulse {
+  0% {
+    transform: scale(0.82);
+    opacity: 0.25;
+  }
+  45% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.06);
+    opacity: 0.45;
+  }
 }
 
 .chat-box {

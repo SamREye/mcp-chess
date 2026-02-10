@@ -41,6 +41,7 @@ export function GameListPanel({ currentUserId }: { currentUserId: string | null 
   const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
   const [playAs, setPlayAs] = useState<"white" | "black">("white");
   const [inviteInfo, setInviteInfo] = useState<string | null>(null);
+  const [isCreatingGame, setIsCreatingGame] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -127,10 +128,11 @@ export function GameListPanel({ currentUserId }: { currentUserId: string | null 
   const isUnregisteredInvite = Boolean(opponentEmail && !chosenUser);
 
   async function createGame() {
-    if (!opponentEmail) return;
+    if (!opponentEmail || isCreatingGame) return;
 
     setError(null);
     setInviteInfo(null);
+    setIsCreatingGame(true);
 
     try {
       const result = await callMcpTool<{ game: { id: string }; invitation: InvitationResult }>(
@@ -153,6 +155,8 @@ export function GameListPanel({ currentUserId }: { currentUserId: string | null 
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create game");
+    } finally {
+      setIsCreatingGame(false);
     }
   }
 
@@ -270,10 +274,10 @@ export function GameListPanel({ currentUserId }: { currentUserId: string | null 
             <button
               type="button"
               className="primary"
-              disabled={!opponentEmail}
+              disabled={!opponentEmail || isCreatingGame}
               onClick={() => void createGame()}
             >
-              Create game
+              {isCreatingGame ? "Creating game..." : "Create game"}
             </button>
 
             {inviteInfo && <p className="muted">{inviteInfo}</p>}

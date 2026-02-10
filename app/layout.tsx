@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import "@/app/globals.css";
 import { auth } from "@/lib/auth";
@@ -21,12 +20,10 @@ export default async function RootLayout({
       <body>
         <div className="page-shell">
           <header className="topbar">
-            <div>
+            <div className="brand">
               <h1>MCP Chess</h1>
-              <p>Moves and game actions are executed via MCP tools.</p>
             </div>
             <nav className="topnav">
-              <Link href="/">Games</Link>
               {session?.user ? (
                 <>
                   <span className="muted">

@@ -1,13 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chess } from "chess.js";
 import type { Square } from "chess.js";
 import * as Ably from "ably";
 
-import { callMcpTool } from "@/lib/mcp-client";
 import { ChessBoard } from "@/components/chess-board";
 import { ChatPanel } from "@/components/chat-panel";
+import { callMcpTool } from "@/lib/mcp-client";
 
 type Piece = {
   square: string;
@@ -62,6 +63,17 @@ type ChatData = {
   }>;
 };
 
+type MovePieceData = {
+  move: {
+    id: string;
+    san: string;
+    from: string;
+    to: string;
+    ply: number;
+    createdAt: string;
+  };
+};
+
 type Toast = {
   id: number;
   level: "warning" | "error";
@@ -69,6 +81,32 @@ type Toast = {
 };
 
 type GameTab = "board" | "history" | "chat";
+
+function getPiecesFromFen(fen: string): Piece[] {
+  const chess = new Chess(fen);
+  const board = chess.board();
+  const files = ["a", "b", "c", "d", "e", "f", "g", "h"];
+  const pieces: Piece[] = [];
+
+  for (let rankIndex = 0; rankIndex < 8; rankIndex += 1) {
+    const rank = 8 - rankIndex;
+    for (let fileIndex = 0; fileIndex < 8; fileIndex += 1) {
+      const piece = board[rankIndex]?.[fileIndex];
+      if (!piece) continue;
+      pieces.push({
+        square: `${files[fileIndex]}${rank}`,
+        type: piece.type,
+        color: piece.color
+      });
+    }
+  }
+
+  return pieces;
+}
+
+function getLastMoveDestination(moves: HistoryData["moves"]) {
+  return moves.length ? moves[moves.length - 1].to : null;
+}
 
 export function GameView({
   gameId,
@@ -82,18 +120,41 @@ export function GameView({
   const [history, setHistory] = useState<HistoryData["moves"]>([]);
   const [messages, setMessages] = useState<ChatData["messages"]>([]);
   const [selectedFrom, setSelectedFrom] = useState<string | null>(null);
+  const [lastMoveSquare, setLastMoveSquare] = useState<string | null>(null);
+  const [recentMoveSquare, setRecentMoveSquare] = useState<string | null>(null);
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMovePending, setIsMovePending] = useState(false);
+  const [isBoardSyncing, setIsBoardSyncing] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const [isSnapshotLoading, setIsSnapshotLoading] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [activeTab, setActiveTab] = useState<GameTab>("board");
   const [unreadCount, setUnreadCount] = useState(0);
   const toastIdRef = useRef(0);
   const activeTabRef = useRef<GameTab>("board");
+  const recentMoveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const load = useCallback(async () => {
+  const markRecentMove = useCallback((square: string | null) => {
+    if (!square) return;
+    setLastMoveSquare(square);
+    setRecentMoveSquare(square);
+
+    if (recentMoveTimerRef.current) {
+      clearTimeout(recentMoveTimerRef.current);
+    }
+    recentMoveTimerRef.current = setTimeout(() => {
+      setRecentMoveSquare((current) => (current === square ? null : current));
+    }, 1500);
+  }, []);
+
+  const loadInitial = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setIsHistoryLoading(true);
+    setIsChatLoading(true);
 
     try {
       const [g, s, h, c] = await Promise.all([
@@ -106,18 +167,68 @@ export function GameView({
       setGame(g.game);
       setStatus(s);
       setHistory(h.moves);
+      setLastMoveSquare(getLastMoveDestination(h.moves));
+      setRecentMoveSquare(null);
       setMessages(c.messages);
       setUnreadCount(0);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load game");
     } finally {
       setLoading(false);
+      setIsHistoryLoading(false);
+      setIsChatLoading(false);
     }
   }, [gameId]);
 
+  const refreshBoardState = useCallback(async () => {
+    setIsBoardSyncing(true);
+    setIsHistoryLoading(true);
+
+    try {
+      const [g, s, h] = await Promise.all([
+        callMcpTool<GameData>("get_game", { gameId }),
+        callMcpTool<StatusData>("status", { gameId }),
+        callMcpTool<HistoryData>("history", { gameId })
+      ]);
+
+      setGame(g.game);
+      setStatus(s);
+      setHistory(h.moves);
+      setLastMoveSquare(getLastMoveDestination(h.moves));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to refresh game state");
+    } finally {
+      setIsBoardSyncing(false);
+      setIsHistoryLoading(false);
+    }
+  }, [gameId]);
+
+  const refreshChat = useCallback(
+    async (showLoader = false) => {
+      if (showLoader) {
+        setIsChatLoading(true);
+      }
+
+      try {
+        const chat = await callMcpTool<ChatData>("get_chat_messages", {
+          gameId,
+          limit: 80
+        });
+        setMessages(chat.messages);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load chat");
+      } finally {
+        if (showLoader) {
+          setIsChatLoading(false);
+        }
+      }
+    },
+    [gameId]
+  );
+
   useEffect(() => {
-    void load();
-  }, [load]);
+    void loadInitial();
+  }, [loadInitial]);
 
   useEffect(() => {
     activeTabRef.current = activeTab;
@@ -125,14 +236,6 @@ export function GameView({
       setUnreadCount(0);
     }
   }, [activeTab]);
-
-  const refreshChat = useCallback(async () => {
-    const chat = await callMcpTool<ChatData>("get_chat_messages", {
-      gameId,
-      limit: 80
-    });
-    setMessages(chat.messages);
-  }, [gameId]);
 
   useEffect(() => {
     const client = new Ably.Realtime({
@@ -164,7 +267,15 @@ export function GameView({
         message.name === "game.finished" ||
         message.name === "game.created"
       ) {
-        void load();
+        const moveTo =
+          typeof message.data === "object" &&
+          message.data !== null &&
+          "to" in message.data &&
+          typeof message.data.to === "string"
+            ? message.data.to
+            : null;
+        markRecentMove(moveTo);
+        void refreshBoardState();
       }
     };
 
@@ -189,7 +300,15 @@ export function GameView({
         // Ignore teardown errors if connection is already closed.
       }
     };
-  }, [gameId, currentUserId, load, refreshChat]);
+  }, [gameId, currentUserId, markRecentMove, refreshBoardState, refreshChat]);
+
+  useEffect(() => {
+    return () => {
+      if (recentMoveTimerRef.current) {
+        clearTimeout(recentMoveTimerRef.current);
+      }
+    };
+  }, []);
 
   const piecesBySquare = useMemo(() => {
     const map = new Map<string, Piece>();
@@ -205,9 +324,18 @@ export function GameView({
     if (game.black.id === currentUserId) return "b" as const;
     return null;
   }, [game, currentUserId]);
+
+  const currentUserEmail = useMemo(() => {
+    if (!game || !currentUserId) return null;
+    if (game.white.id === currentUserId) return game.white.email;
+    if (game.black.id === currentUserId) return game.black.email;
+    return null;
+  }, [game, currentUserId]);
+
   const isGameActive = status?.gameStatus === "ACTIVE";
   const canPlay = Boolean(game?.canMove && myColor && isGameActive);
   const isMyTurn = Boolean(canPlay && status?.turn === myColor);
+
   const gameResultMessage = useMemo(() => {
     if (!status || isGameActive) return null;
 
@@ -239,7 +367,7 @@ export function GameView({
   }
 
   async function handleSquareClick(square: string) {
-    if (!status || !game?.canMove || !myColor) return;
+    if (!status || !game?.canMove || !myColor || isMovePending) return;
     if (status.turn !== myColor) {
       pushToast("warning", "Not your turn.");
       return;
@@ -276,19 +404,77 @@ export function GameView({
       return;
     }
 
+    const optimistic = new Chess(status.fen);
+    const optimisticMove = optimistic.move({
+      from: selectedFrom,
+      to: square,
+      promotion: "q"
+    });
+    if (!optimisticMove) {
+      pushToast("error", "Illegal move.");
+      setSelectedFrom(null);
+      return;
+    }
+
+    const previousStatus = status;
+    const previousHistory = history;
+    const previousGame = game;
+    const previousLastMove = lastMoveSquare;
+    const optimisticFen = optimistic.fen();
+    const optimisticStatus: StatusData = {
+      ...status,
+      fen: optimisticFen,
+      turn: optimistic.turn(),
+      isCheck: optimistic.isCheck(),
+      isCheckmate: optimistic.isCheckmate(),
+      isStalemate: optimistic.isStalemate(),
+      isDraw: optimistic.isDraw(),
+      gameStatus: optimistic.isGameOver() ? "FINISHED" : "ACTIVE",
+      pieces: getPiecesFromFen(optimisticFen)
+    };
+    const optimisticHistoryMove: HistoryData["moves"][number] = {
+      id: `optimistic-${Date.now()}`,
+      ply: (history[history.length - 1]?.ply ?? 0) + 1,
+      san: optimisticMove.san,
+      from: selectedFrom,
+      to: square,
+      createdAt: new Date().toISOString(),
+      byUser: { id: currentUserId ?? "unknown", email: currentUserEmail ?? null }
+    };
+
     setError(null);
+    setSelectedFrom(null);
+    markRecentMove(square);
+    setStatus(optimisticStatus);
+    setHistory((prev) => [...prev, optimisticHistoryMove]);
+    setGame((prev) =>
+      prev
+        ? {
+            ...prev,
+            moveCount: prev.moveCount + 1,
+            status: optimisticStatus.gameStatus
+          }
+        : prev
+    );
+    setIsMovePending(true);
+
     try {
-      await callMcpTool("move_piece", {
+      const result = await callMcpTool<MovePieceData>("move_piece", {
         gameId,
         from: selectedFrom,
         to: square,
         promotion: "q"
       });
-      setSelectedFrom(null);
-      await load();
+      markRecentMove(result.move.to);
+      await refreshBoardState();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Move failed";
       setError(message);
+      setStatus(previousStatus);
+      setHistory(previousHistory);
+      setGame(previousGame);
+      setLastMoveSquare(previousLastMove);
+      setRecentMoveSquare(null);
       if (message.includes("Illegal move")) {
         pushToast(
           "error",
@@ -297,7 +483,9 @@ export function GameView({
       } else if (message.includes("not your turn")) {
         pushToast("warning", "Not your turn.");
       }
-      setSelectedFrom(null);
+      void refreshBoardState();
+    } finally {
+      setIsMovePending(false);
     }
   }
 
@@ -307,23 +495,17 @@ export function GameView({
       body
     });
 
-    const chat = await callMcpTool<ChatData>("get_chat_messages", {
-      gameId,
-      limit: 80
-    });
-    setMessages(chat.messages);
+    await refreshChat(true);
     setUnreadCount(0);
   }
 
   async function loadSnapshot() {
     setError(null);
+    setIsSnapshotLoading(true);
     try {
       const snap = await callMcpTool<{
         snapshotUrl?: string;
         snapshotPath?: string;
-        dataUrl?: string;
-        data?: string;
-        mimeType?: string;
       }>("snapshot", { gameId, size: 560 });
       if (snap.snapshotUrl) {
         setSnapshotUrl(snap.snapshotUrl);
@@ -333,17 +515,11 @@ export function GameView({
         setSnapshotUrl(snap.snapshotPath);
         return;
       }
-      if (snap.dataUrl) {
-        setSnapshotUrl(snap.dataUrl);
-        return;
-      }
-      if (snap.data && snap.mimeType) {
-        setSnapshotUrl(`data:${snap.mimeType};base64,${snap.data}`);
-        return;
-      }
-      throw new Error("Snapshot payload missing image data");
+      throw new Error("Snapshot URL missing from payload");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Snapshot failed");
+    } finally {
+      setIsSnapshotLoading(false);
     }
   }
 
@@ -368,6 +544,10 @@ export function GameView({
         ))}
       </div>
 
+      <Link href="/" className="crumb-link">
+        ← Back to games
+      </Link>
+
       <section className="panel stack">
         <div className="row" style={{ justifyContent: "space-between" }}>
           <h2 style={{ margin: 0 }}>
@@ -378,6 +558,9 @@ export function GameView({
 
         <p className="muted">
           Turn: {status.turn === "w" ? "White" : "Black"} • Moves: {game.moveCount}
+          {(isMovePending || isBoardSyncing) && (
+            <span className="inline-loader">{isMovePending ? "Applying move..." : " Syncing..."}</span>
+          )}
         </p>
 
         {gameResultMessage && <div className="game-result-banner">{gameResultMessage}</div>}
@@ -396,6 +579,7 @@ export function GameView({
             onClick={() => setActiveTab("history")}
           >
             Move History
+            {isHistoryLoading && <span className="tab-badge tab-badge-loading">...</span>}
           </button>
           <button
             className={`tab ${activeTab === "chat" ? "active" : ""}`}
@@ -403,7 +587,11 @@ export function GameView({
             onClick={() => setActiveTab("chat")}
           >
             Chat
-            {unreadCount > 0 && <span className="tab-badge">{unreadCount}</span>}
+            {isChatLoading ? (
+              <span className="tab-badge tab-badge-loading">...</span>
+            ) : (
+              unreadCount > 0 && <span className="tab-badge">{unreadCount}</span>
+            )}
           </button>
         </div>
 
@@ -430,13 +618,23 @@ export function GameView({
               {status.isDraw && <span>Draw</span>}
             </div>
 
-            <ChessBoard
-              pieces={status.pieces}
-              selectedSquare={selectedFrom}
-              onSquareClick={(sq) => void handleSquareClick(sq)}
-              interactive={isMyTurn}
-              orientation={myColor === "b" ? "black" : "white"}
-            />
+            <div className="board-wrap">
+              <ChessBoard
+                pieces={status.pieces}
+                selectedSquare={selectedFrom}
+                lastMoveSquare={lastMoveSquare}
+                recentMoveSquare={recentMoveSquare}
+                onSquareClick={(sq) => void handleSquareClick(sq)}
+                interactive={isMyTurn && !isMovePending}
+                orientation={myColor === "b" ? "black" : "white"}
+              />
+              {(isMovePending || isBoardSyncing) && (
+                <div className="board-overlay" aria-live="polite">
+                  <span className="loader-dot" />
+                  <span>{isMovePending ? "Applying move..." : "Syncing board..."}</span>
+                </div>
+              )}
+            </div>
           </>
         )}
 
@@ -444,10 +642,17 @@ export function GameView({
           <>
             <div className="row" style={{ justifyContent: "space-between" }}>
               <h3 style={{ margin: 0 }}>History</h3>
-              <button type="button" className="primary" onClick={() => void loadSnapshot()}>
-                Snapshot
+              <button
+                type="button"
+                className="primary"
+                onClick={() => void loadSnapshot()}
+                disabled={isSnapshotLoading}
+              >
+                {isSnapshotLoading ? "Loading..." : "Snapshot"}
               </button>
             </div>
+
+            {isHistoryLoading && <p className="muted">Loading history...</p>}
 
             {history.length === 0 ? (
               <p className="muted">No moves yet.</p>
@@ -473,11 +678,14 @@ export function GameView({
         )}
 
         {activeTab === "chat" && (
-          <ChatPanel
-            messages={messages}
-            canSend={Boolean(game.canMove && currentUserId)}
-            onSend={sendMessage}
-          />
+          <>
+            {isChatLoading && <p className="muted">Loading chat...</p>}
+            <ChatPanel
+              messages={messages}
+              canSend={Boolean(game.canMove && currentUserId)}
+              onSend={sendMessage}
+            />
+          </>
         )}
       </section>
 

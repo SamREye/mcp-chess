@@ -20,12 +20,16 @@ const symbols: Record<Piece["type"], string> = {
 export function ChessBoard({
   pieces,
   selectedSquare,
+  lastMoveSquare,
+  recentMoveSquare,
   onSquareClick,
   interactive,
   orientation = "white"
 }: {
   pieces: Piece[];
   selectedSquare: string | null;
+  lastMoveSquare?: string | null;
+  recentMoveSquare?: string | null;
   onSquareClick: (square: string) => void;
   interactive: boolean;
   orientation?: "white" | "black";
@@ -59,6 +63,8 @@ export function ChessBoard({
               onClick={() => onSquareClick(square)}
               className={`square ${isLight ? "light" : "dark"} ${
                 selectedSquare === square ? "selected" : ""
+              } ${lastMoveSquare === square ? "last-move" : ""} ${
+                recentMoveSquare === square ? "last-move-recent" : ""
               }`}
               title={square}
             >
