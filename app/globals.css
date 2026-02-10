@@ -423,6 +423,7 @@ button.primary:hover {
   grid-template-columns: repeat(8, minmax(32px, 64px));
   width: fit-content;
   border: 2px solid #5f4435;
+  position: relative;
 }
 
 .square {
@@ -483,7 +484,11 @@ button.primary:hover {
 
 .piece-b {
   color: #111827;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.22);
+  text-shadow:
+    -1px -1px 0 #f8fafc,
+    1px -1px 0 #f8fafc,
+    -1px 1px 0 #f8fafc,
+    1px 1px 0 #f8fafc;
 }
 
 .square.light {
@@ -520,6 +525,31 @@ button.primary:hover {
 
 .square:disabled {
   cursor: default;
+}
+
+.board-animation-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.anim-piece {
+  position: absolute;
+  width: 12.5%;
+  height: 12.5%;
+  display: grid;
+  place-items: center;
+  font-size: clamp(1.2rem, 3.2vw, 2.1rem);
+  line-height: 1;
+}
+
+.anim-piece-move {
+  animation: piece-move 180ms ease-out forwards;
+}
+
+.anim-piece-captured {
+  animation: piece-capture-fall 360ms cubic-bezier(0.2, 0.72, 0.28, 1) forwards;
 }
 
 .board-wrap {
@@ -579,6 +609,33 @@ button.primary:hover {
   100% {
     transform: scale(1.06);
     opacity: 0.45;
+  }
+}
+
+@keyframes piece-move {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(var(--tx), var(--ty));
+  }
+}
+
+@keyframes piece-capture-fall {
+  from {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  to {
+    transform: translate(42%, 42%) rotate(14deg);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-piece-move,
+  .anim-piece-captured {
+    animation-duration: 1ms;
   }
 }
 

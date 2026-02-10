@@ -7,6 +7,7 @@ import * as Ably from "ably";
 
 import { Avatar } from "@/components/avatar";
 import { ChessBoard } from "@/components/chess-board";
+import type { ChessBoardAnimation } from "@/components/chess-board";
 import { ChatPanel } from "@/components/chat-panel";
 import { callMcpTool } from "@/lib/mcp-client";
 
@@ -70,6 +71,8 @@ type Toast = {
 };
 
 type MobilePane = "board" | "chat";
+const MOVE_ANIMATION_MS = 180;
+const CAPTURE_ANIMATION_MS = 360;
 
 function getPiecesFromFen(fen: string): Piece[] {
   const chess = new Chess(fen);
@@ -93,6 +96,84 @@ function getPiecesFromFen(fen: string): Piece[] {
   return pieces;
 }
 
+function getEnPassantCaptureSquare(
+  to: string,
+  color: Piece["color"]
+): string | null {
+  const file = to[0];
+  const rank = Number(to[1]);
+  if (!file || Number.isNaN(rank)) return null;
+  const captureRank = color === "w" ? rank - 1 : rank + 1;
+  if (captureRank < 1 || captureRank > 8) return null;
+  return `${file}${captureRank}`;
+}
+
+function buildMovePreview(
+  currentStatus: StatusData,
+  from: string,
+  to: string,
+  promotion: "q" | "r" | "b" | "n" = "q"
+): { nextStatus: StatusData; moveTo: string; animation: ChessBoardAnimation } | null {
+  const moverPiece = currentStatus.pieces.find((piece) => piece.square === from);
+  if (!moverPiece) return null;
+
+  const targetPiece = currentStatus.pieces.find((piece) => piece.square === to);
+  const chess = new Chess(currentStatus.fen);
+  const move = chess.move({ from, to, promotion });
+  if (!move) return null;
+
+  let captured:
+    | {
+        square: string;
+        piece: Pick<Piece, "type" | "color">;
+      }
+    | undefined;
+
+  if (move.flags.includes("e")) {
+    const captureSquare = getEnPassantCaptureSquare(to, moverPiece.color);
+    const capturedPiece = captureSquare
+      ? currentStatus.pieces.find((piece) => piece.square === captureSquare)
+      : undefined;
+    if (captureSquare && capturedPiece) {
+      captured = {
+        square: captureSquare,
+        piece: { type: capturedPiece.type, color: capturedPiece.color }
+      };
+    }
+  } else if (targetPiece) {
+    captured = {
+      square: to,
+      piece: { type: targetPiece.type, color: targetPiece.color }
+    };
+  }
+
+  const nextFen = chess.fen();
+
+  return {
+    nextStatus: {
+      ...currentStatus,
+      fen: nextFen,
+      turn: chess.turn(),
+      isCheck: chess.isCheck(),
+      isCheckmate: chess.isCheckmate(),
+      isStalemate: chess.isStalemate(),
+      isDraw: chess.isDraw(),
+      gameStatus: chess.isGameOver() ? "FINISHED" : "ACTIVE",
+      pieces: getPiecesFromFen(nextFen)
+    },
+    moveTo: move.to,
+    animation: {
+      key: Date.now(),
+      mover: {
+        from,
+        to,
+        piece: { type: moverPiece.type, color: moverPiece.color }
+      },
+      captured
+    }
+  };
+}
+
 export function GameView({
   gameId,
   currentUserId
@@ -106,6 +187,7 @@ export function GameView({
   const [selectedFrom, setSelectedFrom] = useState<string | null>(null);
   const [lastMoveSquare, setLastMoveSquare] = useState<string | null>(null);
   const [recentMoveSquare, setRecentMoveSquare] = useState<string | null>(null);
+  const [boardAnimation, setBoardAnimation] = useState<ChessBoardAnimation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMovePending, setIsMovePending] = useState(false);
@@ -116,6 +198,40 @@ export function GameView({
   const [unreadCount, setUnreadCount] = useState(0);
   const toastIdRef = useRef(0);
   const recentMoveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const animationResolveRef = useRef<(() => void) | null>(null);
+  const statusRef = useRef<StatusData | null>(null);
+
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+
+  const finishBoardAnimation = useCallback(() => {
+    if (animationTimerRef.current) {
+      clearTimeout(animationTimerRef.current);
+      animationTimerRef.current = null;
+    }
+    setBoardAnimation(null);
+    const resolve = animationResolveRef.current;
+    animationResolveRef.current = null;
+    resolve?.();
+  }, []);
+
+  const playBoardAnimation = useCallback(
+    async (animation: ChessBoardAnimation | null) => {
+      if (!animation) return;
+      finishBoardAnimation();
+      setBoardAnimation({ ...animation, key: Date.now() });
+      const duration = animation.captured ? CAPTURE_ANIMATION_MS : MOVE_ANIMATION_MS;
+      await new Promise<void>((resolve) => {
+        animationResolveRef.current = resolve;
+        animationTimerRef.current = setTimeout(() => {
+          finishBoardAnimation();
+        }, duration);
+      });
+    },
+    [finishBoardAnimation]
+  );
 
   const markRecentMove = useCallback((square: string | null) => {
     if (!square) return;
@@ -222,20 +338,49 @@ export function GameView({
         return;
       }
 
-      if (
-        message.name === "move.created" ||
-        message.name === "game.finished" ||
-        message.name === "game.created"
-      ) {
+      if (message.name === "move.created") {
+        const payload =
+          typeof message.data === "object" && message.data !== null ? message.data : null;
+        const moveFrom =
+          payload && "from" in payload && typeof payload.from === "string" ? payload.from : null;
         const moveTo =
-          typeof message.data === "object" &&
-          message.data !== null &&
-          "to" in message.data &&
-          typeof message.data.to === "string"
-            ? message.data.to
+          payload && "to" in payload && typeof payload.to === "string" ? payload.to : null;
+        const byUserId =
+          payload && "byUserId" in payload && typeof payload.byUserId === "string"
+            ? payload.byUserId
             : null;
+        const byCurrentUser = Boolean(currentUserId && byUserId === currentUserId);
+
+        if (!byCurrentUser && moveFrom && moveTo && statusRef.current) {
+          const preview = buildMovePreview(statusRef.current, moveFrom, moveTo);
+          if (preview) {
+            void (async () => {
+              await playBoardAnimation(preview.animation);
+              setStatus(preview.nextStatus);
+              setGame((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      moveCount: prev.moveCount + 1,
+                      status: preview.nextStatus.gameStatus
+                    }
+                  : prev
+              );
+              markRecentMove(preview.moveTo);
+              void refreshBoardState();
+            })();
+            return;
+          }
+        }
+
         markRecentMove(moveTo);
         void refreshBoardState();
+        return;
+      }
+
+      if (message.name === "game.finished" || message.name === "game.created") {
+        void refreshBoardState();
+        return;
       }
     };
 
@@ -260,13 +405,28 @@ export function GameView({
         // Ignore teardown errors if connection is already closed.
       }
     };
-  }, [gameId, currentUserId, markRecentMove, mobilePane, refreshBoardState, refreshChat]);
+  }, [
+    gameId,
+    currentUserId,
+    markRecentMove,
+    mobilePane,
+    playBoardAnimation,
+    refreshBoardState,
+    refreshChat
+  ]);
 
   useEffect(() => {
     return () => {
       if (recentMoveTimerRef.current) {
         clearTimeout(recentMoveTimerRef.current);
       }
+      if (animationTimerRef.current) {
+        clearTimeout(animationTimerRef.current);
+        animationTimerRef.current = null;
+      }
+      const resolve = animationResolveRef.current;
+      animationResolveRef.current = null;
+      resolve?.();
     };
   }, []);
 
@@ -382,13 +542,8 @@ export function GameView({
       return;
     }
 
-    const optimistic = new Chess(status.fen);
-    const optimisticMove = optimistic.move({
-      from: selectedFrom,
-      to: square,
-      promotion: "q"
-    });
-    if (!optimisticMove) {
+    const preview = buildMovePreview(status, selectedFrom, square, "q");
+    if (!preview) {
       pushToast("error", "Illegal move.");
       setSelectedFrom(null);
       return;
@@ -397,31 +552,21 @@ export function GameView({
     const previousStatus = status;
     const previousGame = game;
     const previousLastMove = lastMoveSquare;
-    const optimisticFen = optimistic.fen();
 
     setError(null);
     setSelectedFrom(null);
-    markRecentMove(square);
-    setStatus({
-      ...status,
-      fen: optimisticFen,
-      turn: optimistic.turn(),
-      isCheck: optimistic.isCheck(),
-      isCheckmate: optimistic.isCheckmate(),
-      isStalemate: optimistic.isStalemate(),
-      isDraw: optimistic.isDraw(),
-      gameStatus: optimistic.isGameOver() ? "FINISHED" : "ACTIVE",
-      pieces: getPiecesFromFen(optimisticFen)
-    });
+    await playBoardAnimation(preview.animation);
+    setStatus(preview.nextStatus);
     setGame((prev) =>
       prev
         ? {
             ...prev,
             moveCount: prev.moveCount + 1,
-            status: optimistic.isGameOver() ? "FINISHED" : "ACTIVE"
+            status: preview.nextStatus.gameStatus
           }
         : prev
     );
+    markRecentMove(preview.moveTo);
     setIsMovePending(true);
 
     try {
@@ -440,6 +585,7 @@ export function GameView({
       setGame(previousGame);
       setLastMoveSquare(previousLastMove);
       setRecentMoveSquare(null);
+      setBoardAnimation(null);
       if (message.includes("Illegal move")) {
         pushToast(
           "error",
@@ -545,11 +691,12 @@ export function GameView({
                 selectedSquare={selectedFrom}
                 lastMoveSquare={lastMoveSquare}
                 recentMoveSquare={recentMoveSquare}
+                animation={boardAnimation}
                 onSquareClick={(sq) => void handleSquareClick(sq)}
-                interactive={isMyTurn && !isMovePending}
+                interactive={isMyTurn && !isMovePending && !boardAnimation}
                 orientation={myColor === "b" ? "black" : "white"}
               />
-              {(isMovePending || isBoardSyncing) && (
+              {((isMovePending && !boardAnimation) || isBoardSyncing) && (
                 <div className="board-overlay" aria-live="polite">
                   <span className="loader-dot" />
                   <span>{isMovePending ? "Applying move..." : "Syncing board..."}</span>
