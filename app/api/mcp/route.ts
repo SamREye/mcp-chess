@@ -58,8 +58,7 @@ function enrichSnapshotResult(name: string, result: unknown, baseUrl: string) {
 
   return {
     ...(result as Record<string, unknown>),
-    snapshotUrl,
-    markdown: `![Chess board snapshot](${snapshotUrl})`
+    snapshotUrl
   };
 }
 
@@ -76,16 +75,10 @@ function sanitizeStructuredContent(name: string, result: unknown) {
 
 function buildToolContent(name: string, result: unknown): ToolContentItem[] {
   if (name === "snapshot" && result && typeof result === "object") {
-    const markdown =
-      "markdown" in result && typeof result.markdown === "string" ? result.markdown : null;
-    if (markdown) {
-      return [{ type: "text", text: markdown }];
-    }
-
     const snapshotUrl =
       "snapshotUrl" in result && typeof result.snapshotUrl === "string" ? result.snapshotUrl : null;
     if (snapshotUrl) {
-      return [{ type: "text", text: `![Chess board snapshot](${snapshotUrl})` }];
+      return [{ type: "text", text: snapshotUrl }];
     }
 
     const rawData =

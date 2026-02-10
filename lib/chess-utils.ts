@@ -6,13 +6,7 @@ const pieceToUnicode: Record<string, string> = {
   n: "♞",
   b: "♝",
   q: "♛",
-  k: "♚",
-  P: "♙",
-  R: "♖",
-  N: "♘",
-  B: "♗",
-  Q: "♕",
-  K: "♔"
+  k: "♚"
 };
 
 export type PieceStatus = {
@@ -69,8 +63,9 @@ export function renderBoardSvg(fen: string, size = 560): string {
       const piece = board[rankIndex]?.[fileIndex];
       if (!piece) continue;
 
-      const key = piece.color === "w" ? piece.type.toUpperCase() : piece.type;
-      const symbol = pieceToUnicode[key];
+      // Always use solid piece glyphs and tint by color. The hollow unicode
+      // white-piece glyphs can appear transparent in some SVG renderers.
+      const symbol = pieceToUnicode[piece.type];
       const label = `${files[fileIndex]}${rank}`;
       const pieceFill = piece.color === "w" ? "#fffdf8" : "#111111";
       const pieceStroke = piece.color === "w" ? "#4b3a2a" : "#000000";
