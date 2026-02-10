@@ -356,7 +356,8 @@ export const toolDefs: ToolDef[] = [
   },
   {
     name: "snapshot",
-    description: "Generate a board snapshot image for a game.",
+    description:
+      "Return a public URL for the current board snapshot image for a game, plus metadata.",
     inputSchema: {
       type: "object",
       properties: {
