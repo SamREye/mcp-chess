@@ -1268,11 +1268,15 @@ button.primary:hover {
   height: min(64px, 10vw);
   border: 0;
   margin: 0;
+  padding: 0;
   position: relative;
   display: grid;
   place-items: center;
   font-size: clamp(1.2rem, 3.2vw, 2.1rem);
   cursor: pointer;
+  line-height: 0;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .coord {
@@ -1315,8 +1319,8 @@ button.primary:hover {
 
 .piece-img-board,
 .piece-img-anim {
-  width: 86%;
-  height: 86%;
+  width: 92%;
+  height: 92%;
 }
 
 .square.light {
