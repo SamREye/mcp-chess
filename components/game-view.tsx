@@ -496,6 +496,7 @@ export function GameView({
   }, [game, currentUserId]);
 
   const isGameActive = status?.gameStatus === "ACTIVE";
+  const canChat = Boolean(myColor && currentUserId);
   const canPlay = Boolean(game?.canMove && myColor && isGameActive);
   const isMyTurn = Boolean(canPlay && status?.turn === myColor);
 
@@ -785,7 +786,7 @@ export function GameView({
             <ChatPanel
               messages={messages}
               currentUserId={currentUserId}
-              canSend={Boolean(game.canMove && currentUserId)}
+              canSend={canChat}
               onSend={sendMessage}
             />
           </aside>
