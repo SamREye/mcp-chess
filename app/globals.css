@@ -94,6 +94,17 @@ a {
   gap: 0.75rem;
 }
 
+.topbar-help-btn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  padding: 0;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .topnav a,
 .topnav button {
   border: 1px solid var(--line);
@@ -750,6 +761,69 @@ button.primary:hover {
   font-size: 1.1rem;
 }
 
+.help-modal {
+  width: min(680px, calc(100vw - 2rem));
+  max-height: min(88vh, 760px);
+  overflow: auto;
+  margin: 0;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.help-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.help-back-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 8px;
+  color: var(--muted);
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+}
+
+.help-body {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.help-body p {
+  margin: 0;
+}
+
+.help-body h3 {
+  margin: 0;
+}
+
+.help-endpoint {
+  padding: 0.55rem 0.7rem;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.92rem;
+}
+
+.help-endpoint code {
+  font-size: 0.84rem;
+}
+
+.help-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.help-steps {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
 .promotion-grid {
   display: grid;
   gap: 0.55rem;
@@ -1107,6 +1181,10 @@ button.primary:hover {
     display: none;
   }
 
+  .topnav {
+    gap: 0.45rem;
+  }
+
   .new-game-open-btn {
     display: none;
   }
@@ -1126,6 +1204,15 @@ button.primary:hover {
   .new-game-modal {
     width: min(680px, calc(100vw - 2rem));
     max-height: min(90vh, 760px);
+  }
+
+  .help-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .help-actions button {
+    width: 100%;
   }
 
   .new-game-matchup {

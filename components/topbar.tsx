@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { HeaderHelp } from "@/components/header-help";
 import { PlayerCard } from "@/components/player-card";
 
 type TopbarProps = {
@@ -51,6 +52,7 @@ export function Topbar({ user }: TopbarProps) {
         ) : (
           <a href="/api/auth/signin/google?prompt=select_account&callbackUrl=%2F">Sign in</a>
         )}
+        <HeaderHelp />
       </nav>
     </header>
   );
