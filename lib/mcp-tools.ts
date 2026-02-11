@@ -102,14 +102,15 @@ async function getHistoryForGame(gameId: string, limit: number) {
   const game = await db.game.findUnique({ where: { id: gameId } });
   if (!game || !game.isPublic) throw new Error("Game not found");
 
-  const moves = await db.move.findMany({
+  const newestMoves = await db.move.findMany({
     where: { gameId },
-    orderBy: { ply: "asc" },
+    orderBy: { ply: "desc" },
     include: {
       byUser: { select: { id: true, email: true } }
     },
     take: limit
   });
+  const moves = newestMoves.reverse();
 
   return {
     gameId,

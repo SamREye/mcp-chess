@@ -49,6 +49,11 @@ type HistoryData = {
   }>;
 };
 
+function getLatestMoveSquare(history: HistoryData): string | null {
+  if (history.moves.length === 0) return null;
+  return history.moves[history.moves.length - 1]?.to ?? null;
+}
+
 type ChatData = {
   messages: Array<{
     id: string;
@@ -279,7 +284,7 @@ export function GameView({
       ]);
       setGame(g.game);
       setStatus(s);
-      setLastMoveSquare(h.moves[0]?.to ?? null);
+      setLastMoveSquare(getLatestMoveSquare(h));
       setRecentMoveSquare(null);
       setMessages(c.messages);
       setUnreadCount(0);
@@ -301,7 +306,7 @@ export function GameView({
       ]);
       setGame(g.game);
       setStatus(s);
-      setLastMoveSquare(h.moves[0]?.to ?? null);
+      setLastMoveSquare(getLatestMoveSquare(h));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to refresh game state");
     } finally {
