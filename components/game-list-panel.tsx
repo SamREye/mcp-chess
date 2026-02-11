@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { GameCard } from "@/components/game-card";
 import { PlayerCard } from "@/components/player-card";
@@ -49,6 +49,7 @@ type CurrentUser = {
 export function GameListPanel({ currentUser }: { currentUser: CurrentUser | null }) {
   const currentUserId = currentUser?.id ?? null;
   const router = useRouter();
+  const queryCacheRef = useRef<Map<string, UserItem[]>>(new Map());
   const [tab, setTab] = useState<GameTab>(currentUserId ? "my" : "others");
   const [gamesByTab, setGamesByTab] = useState<GamesByTab>(emptyGamesByTab);
   const [loadingGames, setLoadingGames] = useState(false);
@@ -131,8 +132,15 @@ export function GameListPanel({ currentUser }: { currentUser: CurrentUser | null
     let cancelled = false;
     const timer = setTimeout(async () => {
       const query = opponentInput.trim();
-      if (!query || !currentUserId || !isNewGameOpen) {
+      if (!query || query.length < 2 || !currentUserId || !isNewGameOpen) {
         setUsers([]);
+        return;
+      }
+
+      const cacheKey = query.toLowerCase();
+      const cached = queryCacheRef.current.get(cacheKey);
+      if (cached) {
+        setUsers(cached.filter((u) => u.id !== currentUserId));
         return;
       }
 
@@ -143,6 +151,12 @@ export function GameListPanel({ currentUser }: { currentUser: CurrentUser | null
         });
 
         if (!cancelled) {
+          queryCacheRef.current.set(cacheKey, result.users);
+          while (queryCacheRef.current.size > 50) {
+            const oldestKey = queryCacheRef.current.keys().next().value;
+            if (!oldestKey) break;
+            queryCacheRef.current.delete(oldestKey);
+          }
           setUsers(result.users.filter((u) => u.id !== currentUserId));
         }
       } catch {

@@ -13,6 +13,23 @@ function getInitial(input: string | null | undefined, fallback: string) {
   return text[0].toUpperCase();
 }
 
+function getAvatarSrc(image: string | null | undefined) {
+  const value = image?.trim();
+  if (!value) return null;
+  if (
+    value.startsWith("/") ||
+    value.startsWith("data:") ||
+    value.startsWith("blob:") ||
+    value.startsWith("/api/avatar?url=")
+  ) {
+    return value;
+  }
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    return `/api/avatar?url=${encodeURIComponent(value)}`;
+  }
+  return value;
+}
+
 export function Avatar({
   email,
   name,
@@ -23,12 +40,13 @@ export function Avatar({
 }: AvatarProps) {
   const resolvedTitle = title ?? email ?? name ?? "User";
   const initial = getInitial(email ?? name, fallback);
+  const src = getAvatarSrc(image);
 
   return (
     <span className={`avatar ${className ?? ""}`.trim()} title={resolvedTitle}>
-      {image ? (
+      {src ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={image} alt={resolvedTitle} />
+        <img src={src} alt={resolvedTitle} loading="lazy" referrerPolicy="no-referrer" />
       ) : (
         initial
       )}

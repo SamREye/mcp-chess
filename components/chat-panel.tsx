@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { KeyboardEvent } from "react";
 
-import { PlayerCard } from "@/components/player-card";
+import { Avatar } from "@/components/avatar";
 
 type Message = {
   id: string;
@@ -59,17 +59,22 @@ export function ChatPanel({
           messages.map((msg) => {
             const timestamp = new Date(msg.createdAt).toLocaleString();
             const isSelf = Boolean(currentUserId && msg.user.id === currentUserId);
+            const fallback = (msg.user.name?.trim()?.[0] ?? msg.user.email?.trim()?.[0] ?? "?")
+              .toUpperCase();
+            const title = msg.user.email ?? msg.user.name ?? "Player";
             return (
               <div
                 key={msg.id}
                 className={`chat-msg ${isSelf ? "chat-msg-self" : "chat-msg-other"}`}
                 title={timestamp}
               >
-                <PlayerCard
-                  player={msg.user}
-                  size="sm"
-                  className="chat-player"
-                  align={isSelf ? "left" : "right"}
+                <Avatar
+                  email={msg.user.email}
+                  name={msg.user.name}
+                  image={msg.user.image}
+                  fallback={fallback}
+                  title={title}
+                  className="chat-player-avatar"
                 />
                 <div className="chat-msg-content">
                   <p style={{ margin: "0.2rem 0" }}>{msg.body}</p>

@@ -1045,11 +1045,11 @@ button.primary:hover {
 
 .chat-msg {
   display: grid;
-  grid-template-columns: minmax(180px, 230px) minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 0.6rem;
-  align-items: start;
+  align-items: center;
   border-bottom: 1px dashed #e7e0d4;
-  padding-bottom: 0.4rem;
+  padding: 0.15rem 0 0.5rem;
   width: 100%;
 }
 
@@ -1058,14 +1058,16 @@ button.primary:hover {
 }
 
 .chat-msg-other {
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 230px);
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
-.chat-player {
+.chat-player-avatar {
+  width: 2.1rem;
+  height: 2.1rem;
   align-self: center;
 }
 
-.chat-msg-other .chat-player {
+.chat-msg-other .chat-player-avatar {
   grid-column: 2;
 }
 
@@ -1082,6 +1084,7 @@ button.primary:hover {
 .chat-msg-content {
   min-width: 0;
   align-self: center;
+  line-height: 1.3;
 }
 
 .snapshot {
@@ -1195,7 +1198,7 @@ button.primary:hover {
     gap: 0.35rem;
   }
 
-  .chat-msg-other .chat-player,
+  .chat-msg-other .chat-player-avatar,
   .chat-msg-other .chat-msg-content {
     grid-column: 1;
     text-align: left;
