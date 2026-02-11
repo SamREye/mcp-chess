@@ -46,12 +46,58 @@ type StatusData = {
 type HistoryData = {
   moves: Array<{
     to: string;
+    san?: string | null;
   }>;
 };
 
 function getLatestMoveSquare(history: HistoryData): string | null {
   if (history.moves.length === 0) return null;
   return history.moves[history.moves.length - 1]?.to ?? null;
+}
+
+const CAPTURE_SORT_ORDER: Record<Piece["type"], number> = {
+  q: 0,
+  r: 1,
+  b: 2,
+  n: 3,
+  p: 4,
+  k: 5
+};
+
+const PIECE_GLYPHS: Record<Piece["type"], string> = {
+  p: "♟",
+  r: "♜",
+  n: "♞",
+  b: "♝",
+  q: "♛",
+  k: "♚"
+};
+
+function getCapturedPiecesFromHistory(historyMoves: HistoryData["moves"]) {
+  const chess = new Chess();
+  const capturedByWhite: Piece["type"][] = [];
+  const capturedByBlack: Piece["type"][] = [];
+
+  for (const move of historyMoves) {
+    if (!move.san) continue;
+    const appliedMove = chess.move(move.san);
+    if (!appliedMove || !appliedMove.captured) continue;
+
+    const capturedType = appliedMove.captured as Piece["type"];
+    if (appliedMove.color === "w") {
+      capturedByWhite.push(capturedType);
+    } else {
+      capturedByBlack.push(capturedType);
+    }
+  }
+
+  const sortByMaterial = (pieces: Piece["type"][]) =>
+    [...pieces].sort((a, b) => CAPTURE_SORT_ORDER[a] - CAPTURE_SORT_ORDER[b]);
+
+  return {
+    white: sortByMaterial(capturedByWhite),
+    black: sortByMaterial(capturedByBlack)
+  };
 }
 
 type ChatData = {
@@ -68,6 +114,13 @@ type MovePieceData = {
     to: string;
     promotion?: "q" | "r" | "b" | "n" | null;
   };
+};
+
+type ResignGameData = {
+  gameId: string;
+  gameStatus: string;
+  resignedByUserId: string;
+  winnerUserId: string;
 };
 
 type Toast = {
@@ -212,6 +265,7 @@ export function GameView({
 }) {
   const [game, setGame] = useState<GameData["game"] | null>(null);
   const [status, setStatus] = useState<StatusData | null>(null);
+  const [historyMoves, setHistoryMoves] = useState<HistoryData["moves"]>([]);
   const [messages, setMessages] = useState<ChatData["messages"]>([]);
   const [selectedFrom, setSelectedFrom] = useState<string | null>(null);
   const [lastMoveSquare, setLastMoveSquare] = useState<string | null>(null);
@@ -221,6 +275,8 @@ export function GameView({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isMovePending, setIsMovePending] = useState(false);
+  const [isResigning, setIsResigning] = useState(false);
+  const [isResignConfirmOpen, setIsResignConfirmOpen] = useState(false);
   const [isBoardSyncing, setIsBoardSyncing] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -283,11 +339,12 @@ export function GameView({
       const [g, s, h, c] = await Promise.all([
         callMcpTool<GameData>("get_game", { gameId }),
         callMcpTool<StatusData>("status", { gameId }),
-        callMcpTool<HistoryData>("history", { gameId, limit: 1 }),
+        callMcpTool<HistoryData>("history", { gameId, limit: 300 }),
         callMcpTool<ChatData>("get_chat_messages", { gameId, limit: 80 })
       ]);
       setGame(g.game);
       setStatus(s);
+      setHistoryMoves(h.moves);
       setLastMoveSquare(getLatestMoveSquare(h));
       setRecentMoveSquare(null);
       setMessages(c.messages);
@@ -306,10 +363,11 @@ export function GameView({
       const [g, s, h] = await Promise.all([
         callMcpTool<GameData>("get_game", { gameId }),
         callMcpTool<StatusData>("status", { gameId }),
-        callMcpTool<HistoryData>("history", { gameId, limit: 1 })
+        callMcpTool<HistoryData>("history", { gameId, limit: 300 })
       ]);
       setGame(g.game);
       setStatus(s);
+      setHistoryMoves(h.moves);
       setLastMoveSquare(getLatestMoveSquare(h));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to refresh game state");
@@ -482,6 +540,21 @@ export function GameView({
     };
   }, [promotionPrompt]);
 
+  useEffect(() => {
+    if (!isResignConfirmOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsResignConfirmOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isResignConfirmOpen]);
+
   const piecesBySquare = useMemo(() => {
     const map = new Map<string, Piece>();
     for (const p of status?.pieces ?? []) {
@@ -564,6 +637,11 @@ export function GameView({
     if (canPlay) return "waiting-turn";
     return "spectator-turn";
   }, [status, isMyTurn, canPlay]);
+
+  const capturedPieces = useMemo(
+    () => getCapturedPiecesFromHistory(historyMoves),
+    [historyMoves]
+  );
 
   function pushToast(level: Toast["level"], message: string) {
     const id = toastIdRef.current + 1;
@@ -702,6 +780,32 @@ export function GameView({
     await submitMove(choice.from, choice.to, promotion);
   }
 
+  async function handleConfirmResign() {
+    if (!canPlay || isResigning) return;
+    setIsResigning(true);
+    setError(null);
+    setSelectedFrom(null);
+
+    try {
+      await callMcpTool<ResignGameData>("resign_game", { gameId });
+      setIsResignConfirmOpen(false);
+      await refreshBoardState();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to resign game";
+      setError(message);
+      if (message.includes("not active")) {
+        pushToast("warning", "Game is already finished.");
+      } else if (message.includes("Only game players")) {
+        pushToast("warning", "Only players in this game can resign.");
+      } else {
+        pushToast("error", "Unable to resign right now.");
+      }
+      void refreshBoardState();
+    } finally {
+      setIsResigning(false);
+    }
+  }
+
   async function sendMessage(body: string) {
     await callMcpTool("post_chat_message", {
       gameId,
@@ -735,16 +839,66 @@ export function GameView({
       <section className="panel stack game-panel">
         <div className="game-head-row">
           <div className="game-head">
-            <PlayerCard player={game.white} className="game-head-player-card" pieceColor="white" />
+            <div className="game-head-player-stack">
+              <PlayerCard player={game.white} className="game-head-player-card" pieceColor="white" />
+              <div className="captured-row captured-row-white" aria-label="Pieces captured by White">
+                {capturedPieces.white.length > 0 ? (
+                  capturedPieces.white.map((piece, index) => (
+                    <span
+                      key={`white-captured-${piece}-${index}`}
+                      className="piece piece-b captured-piece"
+                      title="Captured black piece"
+                    >
+                      {PIECE_GLYPHS[piece]}
+                    </span>
+                  ))
+                ) : (
+                  <span className="captured-empty">No captures</span>
+                )}
+              </div>
+            </div>
             <span className="game-head-vs">vs</span>
-            <PlayerCard player={game.black} className="game-head-player-card" pieceColor="black" />
+            <div className="game-head-player-stack">
+              <PlayerCard player={game.black} className="game-head-player-card" pieceColor="black" />
+              <div className="captured-row captured-row-black" aria-label="Pieces captured by Black">
+                {capturedPieces.black.length > 0 ? (
+                  capturedPieces.black.map((piece, index) => (
+                    <span
+                      key={`black-captured-${piece}-${index}`}
+                      className="piece piece-w captured-piece"
+                      title="Captured white piece"
+                    >
+                      {PIECE_GLYPHS[piece]}
+                    </span>
+                  ))
+                ) : (
+                  <span className="captured-empty">No captures</span>
+                )}
+              </div>
+            </div>
           </div>
-          <div className={`turn-banner game-status-pill ${statusClassName}`}>
-            {statusMessage}
-            {(isMovePending || isBoardSyncing) && (
-              <span className="inline-loader">
-                {isMovePending ? " Applying move..." : " Syncing..."}
-              </span>
+          <div className="game-status-actions">
+            <div className={`turn-banner game-status-pill ${statusClassName}`}>
+              {statusMessage}
+              {(isMovePending || isBoardSyncing || isResigning) && (
+                <span className="inline-loader">
+                  {isResigning
+                    ? " Resigning..."
+                    : isMovePending
+                      ? " Applying move..."
+                      : " Syncing..."}
+                </span>
+              )}
+            </div>
+            {canPlay && (
+              <button
+                type="button"
+                className="resign-btn"
+                onClick={() => setIsResignConfirmOpen(true)}
+                disabled={isMovePending || isBoardSyncing || isResigning}
+              >
+                {isResigning ? "Resigning..." : "Resign"}
+              </button>
             )}
           </div>
         </div>
@@ -780,10 +934,16 @@ export function GameView({
                 interactive={isMyTurn && !isMovePending && !boardAnimation && !promotionPrompt}
                 orientation={myColor === "b" ? "black" : "white"}
               />
-              {((isMovePending && !boardAnimation) || isBoardSyncing) && (
+              {((isMovePending && !boardAnimation) || isBoardSyncing || isResigning) && (
                 <div className="board-overlay" aria-live="polite">
                   <span className="loader-dot" />
-                  <span>{isMovePending ? "Applying move..." : "Syncing board..."}</span>
+                  <span>
+                    {isResigning
+                      ? "Resigning game..."
+                      : isMovePending
+                        ? "Applying move..."
+                        : "Syncing board..."}
+                  </span>
                 </div>
               )}
             </div>
@@ -832,6 +992,41 @@ export function GameView({
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {isResignConfirmOpen && (
+        <div className="modal-backdrop" onClick={() => setIsResignConfirmOpen(false)}>
+          <div
+            className="promotion-modal resign-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="resign-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 id="resign-title">Resign game?</h3>
+            <p className="muted" style={{ margin: 0 }}>
+              This will immediately end the game and award the win to your opponent.
+            </p>
+            <div className="resign-actions">
+              <button
+                type="button"
+                className="promotion-cancel"
+                onClick={() => setIsResignConfirmOpen(false)}
+                disabled={isResigning}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="resign-btn"
+                onClick={() => void handleConfirmResign()}
+                disabled={isResigning}
+              >
+                {isResigning ? "Resigning..." : "Confirm resign"}
+              </button>
+            </div>
           </div>
         </div>
       )}

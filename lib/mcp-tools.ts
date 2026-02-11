@@ -358,6 +358,58 @@ export const toolDefs: ToolDef[] = [
     }
   },
   {
+    name: "resign_game",
+    description: "Resign an active game (authenticated game players only).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        gameId: { type: "string" }
+      },
+      required: ["gameId"]
+    },
+    execute: async (args, ctx) => {
+      const userId = requireAuth(ctx.userId);
+      const input = gameIdInput.parse(args ?? {});
+
+      const result = await db.$transaction(async (tx) => {
+        const game = await tx.game.findUnique({ where: { id: input.gameId } });
+        if (!game) throw new Error("Game not found");
+        if (game.status !== GameStatus.ACTIVE) throw new Error("Game is not active");
+
+        const isWhite = userId === game.whiteId;
+        const isBlack = userId === game.blackId;
+        if (!isWhite && !isBlack) {
+          throw new Error("Only game players can resign");
+        }
+
+        const winnerUserId = isWhite ? game.blackId : game.whiteId;
+
+        await tx.game.update({
+          where: { id: game.id },
+          data: { status: GameStatus.FINISHED }
+        });
+
+        return {
+          gameId: game.id,
+          gameStatus: GameStatus.FINISHED,
+          resignedByUserId: userId,
+          winnerUserId
+        };
+      });
+
+      await publishGameEvent(input.gameId, "game.finished", {
+        winnerUserId: result.winnerUserId,
+        isCheckmate: false,
+        isDraw: false,
+        reason: "resignation",
+        resignedByUserId: userId
+      });
+      await publishGamesEvent("game.updated", { gameId: input.gameId });
+
+      return result;
+    }
+  },
+  {
     name: "snapshot",
     description:
       "Return a public URL for the current board snapshot image for a game, plus metadata.",

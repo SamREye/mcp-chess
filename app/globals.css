@@ -116,6 +116,29 @@ a {
   cursor: pointer;
 }
 
+.topnav .topbar-player-trigger {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  border-radius: 10px;
+}
+
+.topbar-player-trigger {
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.topbar-player-trigger:focus-visible {
+  outline: 2px solid #0891b2;
+  outline-offset: 2px;
+}
+
+.topbar-player-trigger .player-card-meta {
+  text-align: left;
+}
+
 .avatar {
   width: 2rem;
   height: 2rem;
@@ -656,6 +679,38 @@ button.primary:hover {
   min-width: 0;
 }
 
+.game-head-player-stack {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.captured-row {
+  min-height: 1.05rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.12rem;
+}
+
+.captured-row-white {
+  justify-content: flex-start;
+}
+
+.captured-row-black {
+  justify-content: flex-end;
+}
+
+.captured-piece {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.captured-empty {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
 .game-head-vs {
   color: var(--muted);
   font-weight: 700;
@@ -676,16 +731,49 @@ button.primary:hover {
 }
 
 .game-status-pill {
-  grid-column: 3;
   margin: 0;
   width: fit-content;
   max-width: 58%;
   align-self: flex-start;
-  justify-self: end;
+}
+
+.game-status-actions {
+  grid-column: 3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.game-status-actions .game-status-pill {
+  padding: 0.32rem 0.56rem;
+  line-height: 1.2;
+  font-size: 0.82rem;
 }
 
 .game-head-row .game-head {
   grid-column: 2;
+}
+
+.resign-btn {
+  border: 1px solid #f59e0b;
+  background: #fff7ed;
+  color: #9a3412;
+  border-radius: 8px;
+  padding: 0.32rem 0.56rem;
+  line-height: 1.2;
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.resign-btn:hover {
+  background: #ffedd5;
+}
+
+.resign-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .game-panel {
@@ -799,6 +887,19 @@ button.primary:hover {
   gap: 0.8rem;
 }
 
+.topbar-signout-modal {
+  width: min(360px, calc(100vw - 2rem));
+  display: grid;
+  gap: 0.7rem;
+}
+
+.topbar-signout-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .promotion-modal h3 {
   margin: 0;
   font-size: 1.1rem;
@@ -903,6 +1004,16 @@ button.primary:hover {
   padding: 0.45rem 0.75rem;
   justify-self: end;
   cursor: pointer;
+}
+
+.resign-modal {
+  width: min(420px, 100%);
+}
+
+.resign-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 @keyframes toast-pop {
@@ -1227,10 +1338,12 @@ button.primary:hover {
   }
 
   .topbar-player {
-    max-width: 160px;
+    max-width: fit-content;
+    grid-template-columns: auto;
+    gap: 0;
   }
 
-  .topbar-player .player-card-email {
+  .topbar-player .player-card-meta {
     display: none;
   }
 
@@ -1295,10 +1408,15 @@ button.primary:hover {
     align-items: stretch;
   }
 
-  .game-status-pill {
+  .game-status-actions {
     grid-column: 1;
     justify-self: stretch;
-    max-width: 100%;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .game-status-pill {
+    max-width: calc(100% - 5.5rem);
   }
 
   .game-head-row .game-head {
@@ -1332,23 +1450,36 @@ button.primary:hover {
     height: auto;
   }
 
-  .chat-msg,
-  .chat-msg-other {
+  .chat-msg {
     gap: 0.35rem;
+  }
+
+  .chat-msg-self {
     justify-content: flex-start;
   }
 
-  .chat-msg-self .chat-player-avatar,
-  .chat-msg-other .chat-player-avatar,
-  .chat-msg-other .chat-msg-content {
+  .chat-msg-self .chat-player-avatar {
     order: 0;
-    text-align: left;
   }
 
-  .chat-msg-self .chat-msg-content,
-  .chat-msg-other .chat-msg-content {
+  .chat-msg-self .chat-msg-content {
     order: 1;
-    max-width: 100%;
+    text-align: left;
+    max-width: min(86%, 26rem);
+  }
+
+  .chat-msg-other {
+    justify-content: flex-end;
+  }
+
+  .chat-msg-other .chat-player-avatar {
+    order: 1;
+  }
+
+  .chat-msg-other .chat-msg-content {
+    order: 0;
+    text-align: right;
+    max-width: min(86%, 26rem);
   }
 
   .game-card-meta {
