@@ -2,20 +2,12 @@
 
 import { useMemo } from "react";
 import type { CSSProperties } from "react";
+import { getChessPieceAssetPath, getChessPieceLabel } from "@/lib/chess-piece-assets";
 
 type Piece = {
   square: string;
   type: "p" | "r" | "n" | "b" | "q" | "k";
   color: "w" | "b";
-};
-
-const symbols: Record<Piece["type"], string> = {
-  p: "♟",
-  r: "♜",
-  n: "♞",
-  b: "♝",
-  q: "♛",
-  k: "♚"
 };
 
 export type ChessBoardAnimation = {
@@ -122,7 +114,12 @@ export function ChessBoard({
                 </span>
               ) : null}
               {piece && !hiddenSquares.has(square) ? (
-                <span className={`piece piece-${piece.color}`}>{symbols[piece.type]}</span>
+                <img
+                  src={getChessPieceAssetPath(piece.color, piece.type)}
+                  alt={getChessPieceLabel(piece.color, piece.type)}
+                  className="piece-img piece-img-board"
+                  draggable={false}
+                />
               ) : (
                 ""
               )}
@@ -134,7 +131,7 @@ export function ChessBoard({
         <div className="board-animation-layer" aria-hidden="true">
           <span
             key={`m-${animation.key}`}
-            className={`piece piece-${animation.mover.piece.color} anim-piece anim-piece-move`}
+            className="anim-piece anim-piece-move"
             style={
               {
                 left: `${(moverFromPos.x / 8) * 100}%`,
@@ -144,12 +141,17 @@ export function ChessBoard({
               } as CSSProperties
             }
           >
-            {symbols[animation.mover.piece.type]}
+            <img
+              src={getChessPieceAssetPath(animation.mover.piece.color, animation.mover.piece.type)}
+              alt=""
+              className="piece-img piece-img-anim"
+              draggable={false}
+            />
           </span>
           {animation.captured && capturedPos ? (
             <span
               key={`c-${animation.key}`}
-              className={`piece piece-${animation.captured.piece.color} anim-piece anim-piece-captured`}
+              className="anim-piece anim-piece-captured"
               style={
                 {
                   left: `${(capturedPos.x / 8) * 100}%`,
@@ -157,7 +159,15 @@ export function ChessBoard({
                 } as CSSProperties
               }
             >
-              {symbols[animation.captured.piece.type]}
+              <img
+                src={getChessPieceAssetPath(
+                  animation.captured.piece.color,
+                  animation.captured.piece.type
+                )}
+                alt=""
+                className="piece-img piece-img-anim"
+                draggable={false}
+              />
             </span>
           ) : null}
         </div>

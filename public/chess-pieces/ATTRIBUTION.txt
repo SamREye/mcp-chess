@@ -1,0 +1,18 @@
+Chess piece SVG assets are from Wikimedia Commons (Cburnett set):
+https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces
+
+Files were downloaded from:
+https://commons.wikimedia.org/wiki/Special:FilePath/Chess_klt45.svg
+https://commons.wikimedia.org/wiki/Special:FilePath/Chess_qlt45.svg
+https://commons.wikimedia.org/wiki/Special:FilePath/Chess_rlt45.svg
+https://commons.wikimedia.org/wiki/Special:FilePath/Chess_blt45.svg
+https://commons.wikimedia.org/wiki/Special:FilePath/Chess_nlt45.svg
+https://commons.wikimedia.org/wiki/Special:FilePath/Chess_plt45.svg
+https://commons.wikimedia.org/wiki/Special:FilePath/Chess_kdt45.svg
+https://commons.wikimedia.org/wiki/Special:FilePath/Chess_qdt45.svg
+https://commons.wikimedia.org/wiki/Special:FilePath/Chess_rdt45.svg
+https://commons.wikimedia.org/wiki/Special:FilePath/Chess_bdt45.svg
+https://commons.wikimedia.org/wiki/Special:FilePath/Chess_ndt45.svg
+https://commons.wikimedia.org/wiki/Special:FilePath/Chess_pdt45.svg
+
+Please follow the source licensing terms on Wikimedia Commons.

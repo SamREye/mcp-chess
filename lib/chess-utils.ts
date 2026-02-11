@@ -1,13 +1,5 @@
 import { Chess } from "chess.js";
-
-const pieceToUnicode: Record<string, string> = {
-  p: "♟",
-  r: "♜",
-  n: "♞",
-  b: "♝",
-  q: "♛",
-  k: "♚"
-};
+import { getChessPieceAssetPath } from "@/lib/chess-piece-assets";
 
 export type PieceStatus = {
   square: string;
@@ -63,15 +55,12 @@ export function renderBoardSvg(fen: string, size = 560): string {
       const piece = board[rankIndex]?.[fileIndex];
       if (!piece) continue;
 
-      // Always use solid piece glyphs and tint by color. The hollow unicode
-      // white-piece glyphs can appear transparent in some SVG renderers.
-      const symbol = pieceToUnicode[piece.type];
       const label = `${files[fileIndex]}${rank}`;
-      const pieceFill = piece.color === "w" ? "#fffdf8" : "#111111";
-      const pieceStroke = piece.color === "w" ? "#4b3a2a" : "#000000";
+      const imagePath = getChessPieceAssetPath(piece.color, piece.type);
+      const imageSize = square * 0.82;
+      const imageOffset = (square - imageSize) / 2;
 
-      out += `<text x='${x + square / 2}' y='${y + square * 0.66}' text-anchor='middle' font-size='${square * 0.72}' font-family='\"Times New Roman\", serif' fill='${pieceFill}' stroke='${pieceStroke}' stroke-width='${square * 0.03}' paint-order='stroke fill'>${symbol}</text>`;
-      out += `<title>${label}</title>`;
+      out += `<g><title>${label}</title><image x='${x + imageOffset}' y='${y + imageOffset}' width='${imageSize}' height='${imageSize}' href='${imagePath}' preserveAspectRatio='xMidYMid meet' /></g>`;
     }
   }
 

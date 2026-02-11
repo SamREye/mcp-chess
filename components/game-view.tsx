@@ -10,6 +10,7 @@ import type { ChessBoardAnimation } from "@/components/chess-board";
 import { Avatar } from "@/components/avatar";
 import { ChatPanel } from "@/components/chat-panel";
 import { PlayerCard } from "@/components/player-card";
+import { getChessPieceAssetPath, getChessPieceLabel } from "@/lib/chess-piece-assets";
 import { callMcpTool } from "@/lib/mcp-client";
 
 type Piece = {
@@ -67,15 +68,6 @@ const CAPTURE_SORT_ORDER: Record<Piece["type"], number> = {
   n: 3,
   p: 4,
   k: 5
-};
-
-const PIECE_GLYPHS: Record<Piece["type"], string> = {
-  p: "♟",
-  r: "♜",
-  n: "♞",
-  b: "♝",
-  q: "♛",
-  k: "♚"
 };
 
 type HistoryDisplayMove = {
@@ -222,13 +214,6 @@ const PROMOTION_LABELS: Record<PromotionPiece, string> = {
   b: "Bishop",
   n: "Knight"
 };
-const PIECE_SYMBOLS: Record<PromotionPiece, string> = {
-  q: "♛",
-  r: "♜",
-  b: "♝",
-  n: "♞"
-};
-
 function getPiecesFromFen(fen: string): Piece[] {
   const chess = new Chess(fen);
   const board = chess.board();
@@ -958,10 +943,15 @@ export function GameView({
                   capturedPieces.white.map((piece, index) => (
                     <span
                       key={`white-captured-${piece}-${index}`}
-                      className="piece piece-b captured-piece"
+                      className="captured-piece"
                       title="Captured black piece"
                     >
-                      {PIECE_GLYPHS[piece]}
+                      <img
+                        src={getChessPieceAssetPath("b", piece)}
+                        alt={getChessPieceLabel("b", piece)}
+                        className="piece-img piece-img-captured"
+                        draggable={false}
+                      />
                     </span>
                   ))
                 ) : (
@@ -977,10 +967,15 @@ export function GameView({
                   capturedPieces.black.map((piece, index) => (
                     <span
                       key={`black-captured-${piece}-${index}`}
-                      className="piece piece-w captured-piece"
+                      className="captured-piece"
                       title="Captured white piece"
                     >
-                      {PIECE_GLYPHS[piece]}
+                      <img
+                        src={getChessPieceAssetPath("w", piece)}
+                        alt={getChessPieceLabel("w", piece)}
+                        className="piece-img piece-img-captured"
+                        draggable={false}
+                      />
                     </span>
                   ))
                 ) : (
@@ -1115,9 +1110,12 @@ export function GameView({
                   className="promotion-option"
                   onClick={() => void handlePromotionSelect(promotion)}
                 >
-                  <span className={`piece piece-${promotionPrompt.color} promotion-piece`}>
-                    {PIECE_SYMBOLS[promotion]}
-                  </span>
+                  <img
+                    src={getChessPieceAssetPath(promotionPrompt.color, promotion)}
+                    alt={getChessPieceLabel(promotionPrompt.color, promotion)}
+                    className="piece-img piece-img-promotion"
+                    draggable={false}
+                  />
                   <span>{PROMOTION_LABELS[promotion]}</span>
                 </button>
               ))}
@@ -1173,10 +1171,15 @@ export function GameView({
                           title={move.player.email ?? move.player.name ?? "Player"}
                         />
                         <span
-                          className={`piece piece-${move.pieceColor} history-item-piece`}
+                          className="history-item-piece"
                           title="Moved piece"
                         >
-                          {PIECE_GLYPHS[move.pieceType]}
+                          <img
+                            src={getChessPieceAssetPath(move.pieceColor, move.pieceType)}
+                            alt={getChessPieceLabel(move.pieceColor, move.pieceType)}
+                            className="piece-img piece-img-history"
+                            draggable={false}
+                          />
                         </span>
                       </div>
                       <div className="history-item-main">
