@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -29,6 +30,14 @@ export function Topbar({ user }: TopbarProps) {
         )}
       </div>
       <div className="brand brand-center">
+        <Image
+          src="/icon.svg"
+          alt="MCP Chess rook logo"
+          width={30}
+          height={30}
+          className="brand-logo"
+          priority
+        />
         <h1>MCP Chess</h1>
       </div>
       <nav className="topnav topbar-right">

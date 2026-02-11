@@ -47,10 +47,17 @@ a {
 .brand {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
 }
 
 .brand-center {
   justify-self: center;
+}
+
+.brand-logo {
+  width: 1.72rem;
+  height: 1.72rem;
+  display: inline-block;
 }
 
 .topbar h1 {
