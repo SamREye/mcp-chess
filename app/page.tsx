@@ -5,8 +5,17 @@ export default async function HomePage() {
   const session = await auth();
 
   return (
-    <div className="stack">
-      <GameListPanel currentUserId={session?.user?.id ?? null} />
-    </div>
+    <GameListPanel
+      currentUser={
+        session?.user
+          ? {
+              id: session.user.id,
+              name: session.user.name ?? null,
+              email: session.user.email ?? null,
+              image: session.user.image ?? null
+            }
+          : null
+      }
+    />
   );
 }

@@ -5,10 +5,10 @@ import { Chess } from "chess.js";
 import type { Square } from "chess.js";
 import * as Ably from "ably";
 
-import { Avatar } from "@/components/avatar";
 import { ChessBoard } from "@/components/chess-board";
 import type { ChessBoardAnimation } from "@/components/chess-board";
 import { ChatPanel } from "@/components/chat-panel";
+import { PlayerCard } from "@/components/player-card";
 import { callMcpTool } from "@/lib/mcp-client";
 
 type Piece = {
@@ -20,8 +20,8 @@ type Piece = {
 type GameData = {
   game: {
     id: string;
-    white: { id: string; email: string | null; image: string | null };
-    black: { id: string; email: string | null; image: string | null };
+    white: { id: string; name: string | null; email: string | null; image: string | null };
+    black: { id: string; name: string | null; email: string | null; image: string | null };
     status: string;
     moveCount: number;
     chatCount: number;
@@ -54,7 +54,7 @@ type ChatData = {
     id: string;
     body: string;
     createdAt: string;
-    user: { id: string; email: string | null; image: string | null };
+    user: { id: string; name: string | null; email: string | null; image: string | null };
   }>;
 };
 
@@ -488,13 +488,6 @@ export function GameView({
     return null;
   }, [game, currentUserId]);
 
-  const currentUserEmail = useMemo(() => {
-    if (!game || !currentUserId) return null;
-    if (game.white.id === currentUserId) return game.white.email;
-    if (game.black.id === currentUserId) return game.black.email;
-    return null;
-  }, [game, currentUserId]);
-
   const isGameActive = status?.gameStatus === "ACTIVE";
   const canChat = Boolean(myColor && currentUserId);
   const canPlay = Boolean(game?.canMove && myColor && isGameActive);
@@ -709,27 +702,9 @@ export function GameView({
       <section className="panel stack game-panel">
         <div className="game-head-row">
           <div className="game-head">
-            <div className="game-head-player">
-              <Avatar
-                email={game.white.email}
-                image={game.white.image}
-                fallback="W"
-                className="avatar-player"
-                title={game.white.email ?? game.white.id}
-              />
-              <span className="muted">White</span>
-            </div>
+            <PlayerCard player={game.white} className="game-head-player-card" />
             <span className="game-head-vs">vs</span>
-            <div className="game-head-player">
-              <Avatar
-                email={game.black.email}
-                image={game.black.image}
-                fallback="B"
-                className="avatar-player"
-                title={game.black.email ?? game.black.id}
-              />
-              <span className="muted">Black</span>
-            </div>
+            <PlayerCard player={game.black} className="game-head-player-card" />
           </div>
           <div className={`turn-banner game-status-pill ${statusClassName}`}>
             {statusMessage}

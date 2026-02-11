@@ -75,6 +75,12 @@ a {
   color: var(--muted);
 }
 
+.topbar-spacer {
+  display: inline-block;
+  width: 4.8rem;
+  height: 2rem;
+}
+
 .topnav {
   display: flex;
   align-items: center;
@@ -115,6 +121,69 @@ a {
 .avatar-self {
   width: 2.1rem;
   height: 2.1rem;
+}
+
+.player-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.player-card-right {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.player-card-right .player-card-avatar {
+  grid-column: 2;
+}
+
+.player-card-right .player-card-meta {
+  text-align: right;
+}
+
+.player-card-meta {
+  min-width: 0;
+}
+
+.player-card-name {
+  margin: 0;
+  font-weight: 650;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-card-email {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.player-card-sm {
+  gap: 0.42rem;
+}
+
+.player-card-sm .player-card-avatar {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.player-card-sm .player-card-name {
+  font-size: 0.86rem;
+}
+
+.player-card-sm .player-card-email {
+  font-size: 0.72rem;
+}
+
+.topbar-player {
+  max-width: 240px;
 }
 
 .panel {
@@ -232,10 +301,256 @@ button.primary:hover {
 }
 
 .game-list li {
+  padding: 0;
+}
+
+.game-card {
+  display: grid;
+  gap: 0.68rem;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 0.75rem;
   background: #fff;
+  text-decoration: none;
+}
+
+.game-card:hover {
+  border-color: #b8ad9d;
+  box-shadow: 0 6px 16px rgba(31, 31, 27, 0.08);
+}
+
+.game-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.game-card-players {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.game-card-player {
+  min-width: 0;
+}
+
+.game-card-vs {
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex: 0 0 auto;
+}
+
+.game-card-status {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.18rem 0.5rem;
+  font-size: 0.74rem;
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+
+.game-card-status-active {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #14532d;
+}
+
+.game-card-status-finished {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #334155;
+}
+
+.game-card-status-default {
+  background: #fef3c7;
+  border-color: #fcd34d;
+  color: #78350f;
+}
+
+.game-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.game-card-timestamp {
+  font-size: 0.74rem;
+  opacity: 0.82;
+}
+
+.game-list-main {
+  width: min(980px, 100%);
+  margin: 0.85rem auto 0;
+}
+
+.game-list-head {
+  justify-content: space-between;
+}
+
+.new-game-open-btn {
+  white-space: nowrap;
+}
+
+.new-game-fab {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1100;
+  border-radius: 999px;
+  padding: 0.72rem 1rem;
+  box-shadow: 0 10px 20px rgba(17, 24, 39, 0.2);
+  display: none;
+}
+
+.new-game-fab-plus {
+  display: inline-block;
+  line-height: 1;
+}
+
+.new-game-fab-label {
+  display: none;
+}
+
+.new-game-modal {
+  width: min(680px, calc(100vw - 2rem));
+  max-height: min(88vh, 760px);
+  overflow: auto;
+  margin: 0;
+  display: grid;
+  gap: 0.95rem;
+}
+
+.new-game-head {
+  justify-content: space-between;
+  align-items: center;
+  margin: 0;
+}
+
+.new-game-matchup {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.75rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.new-game-side {
+  min-width: 0;
+  display: grid;
+  gap: 0.28rem;
+}
+
+.new-game-side-label {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 650;
+}
+
+.new-game-preview-player {
+  min-width: 0;
+}
+
+.new-game-vs {
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.new-game-fields {
+  display: grid;
+  gap: 0.78rem;
+}
+
+.new-game-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.new-game-field > span {
+  font-weight: 600;
+}
+
+.new-game-field input,
+.new-game-field select {
+  width: 100%;
+}
+
+.new-game-suggestions {
+  height: 13.75rem;
+  max-height: 13.75rem;
+  overflow: auto;
+  padding-right: 0.15rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.35rem;
+}
+
+.new-game-suggestions .user-pick {
+  min-height: 4.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.new-game-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.new-game-field-inline {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 210px;
+}
+
+.new-game-field-inline > span {
+  font-weight: 600;
+}
+
+.new-game-field-inline select {
+  width: 100%;
+}
+
+.new-game-close {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 8px;
+  color: var(--muted);
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+}
+
+.user-pick {
+  all: unset;
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.55rem 0.6rem;
+  background: #fff;
+}
+
+.user-pick:hover {
+  border-color: #b8ad9d;
 }
 
 .muted {
@@ -276,18 +591,8 @@ button.primary:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.8rem;
-}
-
-.game-head-player {
-  display: grid;
-  justify-items: center;
-  gap: 0.24rem;
-}
-
-.avatar-player {
-  width: 2.45rem;
-  height: 2.45rem;
+  gap: 0.72rem;
+  min-width: 0;
 }
 
 .game-head-vs {
@@ -295,6 +600,11 @@ button.primary:hover {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.game-head-player-card {
+  min-width: 0;
+  max-width: 280px;
 }
 
 .game-head-row {
@@ -728,7 +1038,7 @@ button.primary:hover {
 
 .chat-msg {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(180px, 230px) minmax(0, 1fr);
   gap: 0.6rem;
   align-items: start;
   border-bottom: 1px dashed #e7e0d4;
@@ -741,12 +1051,15 @@ button.primary:hover {
 }
 
 .chat-msg-other {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 230px);
 }
 
-.chat-msg-other .avatar-chat {
+.chat-player {
+  align-self: center;
+}
+
+.chat-msg-other .chat-player {
   grid-column: 2;
-  grid-row: 1;
 }
 
 .chat-msg-other .chat-msg-content {
@@ -761,13 +1074,7 @@ button.primary:hover {
 
 .chat-msg-content {
   min-width: 0;
-}
-
-.avatar-chat {
-  width: 1.55rem;
-  height: 1.55rem;
-  margin-top: 0.05rem;
-  font-size: 0.72rem;
+  align-self: center;
 }
 
 .snapshot {
@@ -778,6 +1085,61 @@ button.primary:hover {
 }
 
 @media (max-width: 900px) {
+  .game-list-head {
+    align-items: flex-start;
+  }
+
+  .topbar-player {
+    max-width: 160px;
+  }
+
+  .topbar-player .player-card-email {
+    display: none;
+  }
+
+  .new-game-open-btn {
+    display: none;
+  }
+
+  .new-game-fab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 999px;
+    padding: 0;
+    font-size: 1.9rem;
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.35);
+  }
+
+  .new-game-modal {
+    width: min(680px, calc(100vw - 2rem));
+    max-height: min(90vh, 760px);
+  }
+
+  .new-game-matchup {
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+
+  .new-game-vs {
+    justify-self: center;
+  }
+
+  .new-game-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .new-game-field-inline {
+    min-width: 0;
+  }
+
+  .new-game-actions button.primary {
+    width: 100%;
+  }
+
   .game-head-row {
     grid-template-columns: 1fr;
     align-items: stretch;
@@ -818,5 +1180,23 @@ button.primary:hover {
 
   .chat-panel {
     height: auto;
+  }
+
+  .chat-msg,
+  .chat-msg-other {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .chat-msg-other .chat-player,
+  .chat-msg-other .chat-msg-content {
+    grid-column: 1;
+    text-align: left;
+  }
+
+  .game-card-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
   }
 }

@@ -486,8 +486,8 @@ export const toolDefs: ToolDef[] = [
       const games = await db.game.findMany({
         where,
         include: {
-          white: { select: { id: true, email: true } },
-          black: { select: { id: true, email: true } },
+          white: { select: { id: true, name: true, email: true, image: true } },
+          black: { select: { id: true, name: true, email: true, image: true } },
           _count: { select: { moves: true } }
         },
         orderBy: { updatedAt: "desc" },
@@ -522,8 +522,8 @@ export const toolDefs: ToolDef[] = [
       const game = await db.game.findUnique({
         where: { id: input.gameId },
         include: {
-          white: { select: { id: true, email: true, image: true } },
-          black: { select: { id: true, email: true, image: true } },
+          white: { select: { id: true, name: true, email: true, image: true } },
+          black: { select: { id: true, name: true, email: true, image: true } },
           _count: { select: { moves: true, chatMessages: true } }
         }
       });
@@ -565,7 +565,7 @@ export const toolDefs: ToolDef[] = [
       const messages = await db.chatMessage.findMany({
         where: { gameId: input.gameId },
         include: {
-          user: { select: { id: true, email: true, image: true } }
+          user: { select: { id: true, name: true, email: true, image: true } }
         },
         orderBy: { createdAt: "asc" },
         take: input.limit
@@ -611,7 +611,7 @@ export const toolDefs: ToolDef[] = [
           body: input.body
         },
         include: {
-          user: { select: { id: true, email: true, image: true } }
+          user: { select: { id: true, name: true, email: true, image: true } }
         }
       });
 
