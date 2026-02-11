@@ -751,6 +751,72 @@ button.primary:hover {
   font-size: 0.82rem;
 }
 
+.game-actions-menu {
+  position: relative;
+}
+
+.overflow-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  border-radius: 8px;
+  width: 2rem;
+  height: 1.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.overflow-btn:hover {
+  border-color: #b8ad9d;
+  background: #f9f6ef;
+}
+
+.overflow-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  z-index: 8;
+  min-width: 11rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+  padding: 0.3rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.overflow-menu-item {
+  border: 1px solid transparent;
+  background: #fff;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.44rem 0.52rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.overflow-menu-item:hover {
+  background: #f8f4ea;
+}
+
+.overflow-menu-item-danger {
+  color: #b91c1c;
+}
+
+.overflow-menu-item-danger:hover {
+  background: #fef2f2;
+}
+
+.overflow-menu-item:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .game-head-row .game-head {
   grid-column: 2;
 }
@@ -1014,6 +1080,88 @@ button.primary:hover {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+.history-modal {
+  width: min(540px, 100%);
+}
+
+.history-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.history-modal-head h3 {
+  margin: 0;
+}
+
+.history-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.32rem;
+  max-height: min(52vh, 420px);
+  overflow: auto;
+}
+
+.history-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 0.4rem 0.52rem;
+}
+
+.history-item-player {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+}
+
+.history-item-avatar {
+  width: 1.45rem;
+  height: 1.45rem;
+}
+
+.history-item-piece {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.history-item-main {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.history-item-ply {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.history-item-san {
+  font-weight: 650;
+  font-size: 0.88rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-item-time {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-align: right;
+  white-space: nowrap;
 }
 
 @keyframes toast-pop {
@@ -1416,7 +1564,7 @@ button.primary:hover {
   }
 
   .game-status-pill {
-    max-width: calc(100% - 5.5rem);
+    max-width: calc(100% - 3rem);
   }
 
   .game-head-row .game-head {

@@ -7,6 +7,7 @@ import * as Ably from "ably";
 
 import { ChessBoard } from "@/components/chess-board";
 import type { ChessBoardAnimation } from "@/components/chess-board";
+import { Avatar } from "@/components/avatar";
 import { ChatPanel } from "@/components/chat-panel";
 import { PlayerCard } from "@/components/player-card";
 import { callMcpTool } from "@/lib/mcp-client";
@@ -47,6 +48,10 @@ type HistoryData = {
   moves: Array<{
     to: string;
     san?: string | null;
+    from?: string;
+    ply?: number;
+    createdAt?: string;
+    byUser?: { id: string; email: string | null } | null;
   }>;
 };
 
@@ -71,6 +76,21 @@ const PIECE_GLYPHS: Record<Piece["type"], string> = {
   b: "♝",
   q: "♛",
   k: "♚"
+};
+
+type HistoryDisplayMove = {
+  key: string;
+  plyLabel: string;
+  moveLabel: string;
+  createdAtLabel: string | null;
+  pieceType: Piece["type"];
+  pieceColor: Piece["color"];
+  player: {
+    id?: string | null;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+  };
 };
 
 function getCapturedPiecesFromHistory(historyMoves: HistoryData["moves"]) {
@@ -98,6 +118,63 @@ function getCapturedPiecesFromHistory(historyMoves: HistoryData["moves"]) {
     white: sortByMaterial(capturedByWhite),
     black: sortByMaterial(capturedByBlack)
   };
+}
+
+function buildHistoryDisplayMoves(
+  historyMoves: HistoryData["moves"],
+  game: GameData["game"] | null
+): HistoryDisplayMove[] {
+  const chess = new Chess();
+
+  const getPlayerForMove = (
+    move: HistoryData["moves"][number],
+    pieceColor: Piece["color"]
+  ): HistoryDisplayMove["player"] => {
+    const byUserId = move.byUser?.id ?? null;
+    const byEmail = move.byUser?.email?.trim().toLowerCase() ?? null;
+
+    if (game) {
+      const whiteEmail = game.white.email?.trim().toLowerCase() ?? null;
+      const blackEmail = game.black.email?.trim().toLowerCase() ?? null;
+
+      if (byUserId && byUserId === game.white.id) return game.white;
+      if (byUserId && byUserId === game.black.id) return game.black;
+      if (byEmail && whiteEmail && byEmail === whiteEmail) return game.white;
+      if (byEmail && blackEmail && byEmail === blackEmail) return game.black;
+      return pieceColor === "w" ? game.white : game.black;
+    }
+
+    return {
+      id: byUserId,
+      name: byEmail ? byEmail.split("@")[0] : pieceColor === "w" ? "White" : "Black",
+      email: byEmail,
+      image: null
+    };
+  };
+
+  return historyMoves.map((move, index) => {
+    let pieceType: Piece["type"] = "p";
+    let pieceColor: Piece["color"] =
+      ((move.ply ?? index + 1) % 2 === 1 ? "w" : "b") as Piece["color"];
+
+    if (move.san) {
+      const applied = chess.move(move.san);
+      if (applied) {
+        pieceType = applied.piece as Piece["type"];
+        pieceColor = applied.color as Piece["color"];
+      }
+    }
+
+    return {
+      key: `${move.ply ?? index}-${move.san ?? move.to}-${index}`,
+      plyLabel: move.ply ? `${move.ply}.` : `${index + 1}.`,
+      moveLabel: move.san?.trim() || (move.from ? `${move.from}→${move.to}` : move.to),
+      createdAtLabel: move.createdAt ? new Date(move.createdAt).toLocaleString() : null,
+      pieceType,
+      pieceColor,
+      player: getPlayerForMove(move, pieceColor)
+    };
+  });
 }
 
 type ChatData = {
@@ -277,6 +354,8 @@ export function GameView({
   const [isMovePending, setIsMovePending] = useState(false);
   const [isResigning, setIsResigning] = useState(false);
   const [isResignConfirmOpen, setIsResignConfirmOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [isBoardSyncing, setIsBoardSyncing] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -287,6 +366,7 @@ export function GameView({
   const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const animationResolveRef = useRef<(() => void) | null>(null);
   const statusRef = useRef<StatusData | null>(null);
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     statusRef.current = status;
@@ -541,10 +621,12 @@ export function GameView({
   }, [promotionPrompt]);
 
   useEffect(() => {
-    if (!isResignConfirmOpen) return;
+    if (!(isResignConfirmOpen || isHistoryOpen || isActionsOpen)) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        setIsActionsOpen(false);
+        setIsHistoryOpen(false);
         setIsResignConfirmOpen(false);
       }
     };
@@ -553,7 +635,23 @@ export function GameView({
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [isResignConfirmOpen]);
+  }, [isActionsOpen, isHistoryOpen, isResignConfirmOpen]);
+
+  useEffect(() => {
+    if (!isActionsOpen) return;
+
+    const onMouseDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (actionsMenuRef.current?.contains(target)) return;
+      setIsActionsOpen(false);
+    };
+
+    window.addEventListener("mousedown", onMouseDown);
+    return () => {
+      window.removeEventListener("mousedown", onMouseDown);
+    };
+  }, [isActionsOpen]);
 
   const piecesBySquare = useMemo(() => {
     const map = new Map<string, Piece>();
@@ -641,6 +739,10 @@ export function GameView({
   const capturedPieces = useMemo(
     () => getCapturedPiecesFromHistory(historyMoves),
     [historyMoves]
+  );
+  const historyDisplayMoves = useMemo(
+    () => buildHistoryDisplayMoves(historyMoves, game),
+    [historyMoves, game]
   );
 
   function pushToast(level: Toast["level"], message: string) {
@@ -806,6 +908,16 @@ export function GameView({
     }
   }
 
+  function openHistoryModal() {
+    setIsActionsOpen(false);
+    setIsHistoryOpen(true);
+  }
+
+  function openResignModal() {
+    setIsActionsOpen(false);
+    setIsResignConfirmOpen(true);
+  }
+
   async function sendMessage(body: string) {
     await callMcpTool("post_chat_message", {
       gameId,
@@ -890,16 +1002,41 @@ export function GameView({
                 </span>
               )}
             </div>
-            {canPlay && (
+            <div className="game-actions-menu" ref={actionsMenuRef}>
               <button
                 type="button"
-                className="resign-btn"
-                onClick={() => setIsResignConfirmOpen(true)}
-                disabled={isMovePending || isBoardSyncing || isResigning}
+                className="overflow-btn"
+                onClick={() => setIsActionsOpen((current) => !current)}
+                aria-haspopup="menu"
+                aria-expanded={isActionsOpen}
+                title="Game actions"
               >
-                {isResigning ? "Resigning..." : "Resign"}
+                ⋯
               </button>
-            )}
+              {isActionsOpen && (
+                <div className="overflow-menu" role="menu">
+                  <button
+                    type="button"
+                    className="overflow-menu-item"
+                    role="menuitem"
+                    onClick={openHistoryModal}
+                  >
+                    Move history
+                  </button>
+                  {canPlay && (
+                    <button
+                      type="button"
+                      className="overflow-menu-item overflow-menu-item-danger"
+                      role="menuitem"
+                      onClick={openResignModal}
+                      disabled={isMovePending || isBoardSyncing || isResigning}
+                    >
+                      Resign
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -992,6 +1129,68 @@ export function GameView({
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {isHistoryOpen && (
+        <div className="modal-backdrop" onClick={() => setIsHistoryOpen(false)}>
+          <div
+            className="promotion-modal history-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="history-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="history-modal-head">
+              <h3 id="history-title">Move history</h3>
+              <button
+                type="button"
+                className="new-game-close"
+                onClick={() => setIsHistoryOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            {historyDisplayMoves.length === 0 ? (
+              <p className="muted" style={{ margin: 0 }}>
+                No moves yet.
+              </p>
+            ) : (
+              <ol className="history-list">
+                {historyDisplayMoves.map((move) => {
+                  const avatarFallback =
+                    move.player.name?.trim()?.[0] ?? move.player.email?.trim()?.[0] ?? "?";
+                  return (
+                    <li key={move.key} className="history-item">
+                      <div className="history-item-player">
+                        <Avatar
+                          email={move.player.email}
+                          name={move.player.name}
+                          image={move.player.image}
+                          fallback={avatarFallback.toUpperCase()}
+                          className="history-item-avatar"
+                          title={move.player.email ?? move.player.name ?? "Player"}
+                        />
+                        <span
+                          className={`piece piece-${move.pieceColor} history-item-piece`}
+                          title="Moved piece"
+                        >
+                          {PIECE_GLYPHS[move.pieceType]}
+                        </span>
+                      </div>
+                      <div className="history-item-main">
+                        <span className="history-item-ply">{move.plyLabel}</span>
+                        <span className="history-item-san">{move.moveLabel}</span>
+                      </div>
+                      {move.createdAtLabel && (
+                        <span className="history-item-time">{move.createdAtLabel}</span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
           </div>
         </div>
       )}
