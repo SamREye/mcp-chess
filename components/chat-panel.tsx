@@ -19,12 +19,16 @@ type Message = {
 
 export function ChatPanel({
   messages,
-  currentUserId,
+  selfUser,
   canSend,
   onSend
 }: {
   messages: Message[];
-  currentUserId: string | null;
+  selfUser: {
+    id: string | null;
+    email: string | null;
+    name: string | null;
+  } | null;
   canSend: boolean;
   onSend: (body: string) => Promise<void>;
 }) {
@@ -58,7 +62,19 @@ export function ChatPanel({
         ) : (
           messages.map((msg) => {
             const timestamp = new Date(msg.createdAt).toLocaleString();
-            const isSelf = Boolean(currentUserId && msg.user.id === currentUserId);
+            const normalizedCurrentEmail = selfUser?.email?.trim().toLowerCase() ?? null;
+            const normalizedMessageEmail = msg.user.email?.trim().toLowerCase() ?? null;
+            const normalizedCurrentName = selfUser?.name?.trim().toLowerCase() ?? null;
+            const normalizedMessageName = msg.user.name?.trim().toLowerCase() ?? null;
+            const isSelf = Boolean(
+              (selfUser?.id && msg.user.id === selfUser.id) ||
+                (normalizedCurrentEmail &&
+                  normalizedMessageEmail &&
+                  normalizedCurrentEmail === normalizedMessageEmail) ||
+                (normalizedCurrentName &&
+                  normalizedMessageName &&
+                  normalizedCurrentName === normalizedMessageName)
+            );
             const fallback = (msg.user.name?.trim()?.[0] ?? msg.user.email?.trim()?.[0] ?? "?")
               .toUpperCase();
             const title = msg.user.email ?? msg.user.name ?? "Player";

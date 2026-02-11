@@ -201,10 +201,14 @@ function buildMovePreview(
 
 export function GameView({
   gameId,
-  currentUserId
+  currentUserId,
+  currentUserEmail,
+  currentUserName
 }: {
   gameId: string;
   currentUserId: string | null;
+  currentUserEmail: string | null;
+  currentUserName: string | null;
 }) {
   const [game, setGame] = useState<GameData["game"] | null>(null);
   const [status, setStatus] = useState<StatusData | null>(null);
@@ -487,11 +491,35 @@ export function GameView({
   }, [status?.pieces]);
 
   const myColor = useMemo(() => {
-    if (!game || !currentUserId) return null;
-    if (game.white.id === currentUserId) return "w" as const;
-    if (game.black.id === currentUserId) return "b" as const;
+    if (!game) return null;
+    if (currentUserId) {
+      if (game.white.id === currentUserId) return "w" as const;
+      if (game.black.id === currentUserId) return "b" as const;
+    }
+    const normalizedCurrentEmail = currentUserEmail?.trim().toLowerCase();
+    if (normalizedCurrentEmail) {
+      if (game.white.email?.trim().toLowerCase() === normalizedCurrentEmail) return "w" as const;
+      if (game.black.email?.trim().toLowerCase() === normalizedCurrentEmail) return "b" as const;
+    }
+
+    const normalizedCurrentName = currentUserName?.trim().toLowerCase();
+    if (normalizedCurrentName) {
+      if (game.white.name?.trim().toLowerCase() === normalizedCurrentName) return "w" as const;
+      if (game.black.name?.trim().toLowerCase() === normalizedCurrentName) return "b" as const;
+    }
+
     return null;
-  }, [game, currentUserId]);
+  }, [game, currentUserEmail, currentUserId, currentUserName]);
+
+  const selfChatUser = useMemo(() => {
+    if (!game || !myColor) return null;
+    const player = myColor === "w" ? game.white : game.black;
+    return {
+      id: player.id,
+      email: player.email,
+      name: player.name
+    };
+  }, [game, myColor]);
 
   const isGameActive = status?.gameStatus === "ACTIVE";
   const canChat = Boolean(myColor && currentUserId);
@@ -707,9 +735,9 @@ export function GameView({
       <section className="panel stack game-panel">
         <div className="game-head-row">
           <div className="game-head">
-            <PlayerCard player={game.white} className="game-head-player-card" />
+            <PlayerCard player={game.white} className="game-head-player-card" pieceColor="white" />
             <span className="game-head-vs">vs</span>
-            <PlayerCard player={game.black} className="game-head-player-card" />
+            <PlayerCard player={game.black} className="game-head-player-card" pieceColor="black" />
           </div>
           <div className={`turn-banner game-status-pill ${statusClassName}`}>
             {statusMessage}
@@ -765,7 +793,7 @@ export function GameView({
             {isChatLoading && <p className="muted">Loading chat...</p>}
             <ChatPanel
               messages={messages}
-              currentUserId={currentUserId}
+              selfUser={selfChatUser}
               canSend={canChat}
               onSend={sendMessage}
             />

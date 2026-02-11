@@ -8,5 +8,12 @@ export default async function GamePage({
 }) {
   const session = await auth();
 
-  return <GameView gameId={params.id} currentUserId={session?.user?.id ?? null} />;
+  return (
+    <GameView
+      gameId={params.id}
+      currentUserId={session?.user?.id ?? null}
+      currentUserEmail={session?.user?.email ?? null}
+      currentUserName={session?.user?.name ?? null}
+    />
+  );
 }

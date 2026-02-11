@@ -34,9 +34,19 @@ export function GameCard({ game }: GameCardProps) {
     <Link href={`/games/${game.id}`} className="game-card">
       <div className="game-card-top">
         <div className="game-card-players">
-          <PlayerCard player={game.white} size="sm" className="game-card-player" />
+          <PlayerCard
+            player={game.white}
+            size="sm"
+            className="game-card-player"
+            pieceColor="white"
+          />
           <span className="game-card-vs">vs</span>
-          <PlayerCard player={game.black} size="sm" className="game-card-player" />
+          <PlayerCard
+            player={game.black}
+            size="sm"
+            className="game-card-player"
+            pieceColor="black"
+          />
         </div>
         <span className={`game-card-status game-card-status-${statusTone}`}>{game.status}</span>
       </div>

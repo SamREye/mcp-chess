@@ -379,12 +379,20 @@ export function GameListPanel({ currentUser }: { currentUser: CurrentUser | null
             <div className="new-game-matchup">
               <div className="new-game-side">
                 <p className="new-game-side-label">White</p>
-                <PlayerCard player={whitePreview} className="new-game-preview-player" />
+                <PlayerCard
+                  player={whitePreview}
+                  className="new-game-preview-player"
+                  pieceColor="white"
+                />
               </div>
               <span className="new-game-vs">vs</span>
               <div className="new-game-side">
                 <p className="new-game-side-label">Black</p>
-                <PlayerCard player={blackPreview} className="new-game-preview-player" />
+                <PlayerCard
+                  player={blackPreview}
+                  className="new-game-preview-player"
+                  pieceColor="black"
+                />
               </div>
             </div>
 
