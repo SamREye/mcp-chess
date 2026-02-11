@@ -9,3 +9,4 @@ prisma/dev.db-journal
 dev.db
 dev.db-journal
 tsconfig.tsbuildinfo
+.DS_Store

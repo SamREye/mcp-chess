@@ -58,6 +58,8 @@ a {
   width: 1.72rem;
   height: 1.72rem;
   display: inline-block;
+  object-fit: cover;
+  border-radius: 0.35rem;
 }
 
 .topbar h1 {

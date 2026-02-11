@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 
 import { HeaderHelp } from "@/components/header-help";
 import { PlayerCard } from "@/components/player-card";
+import logoImage from "@/app/mcp-chess-logo.jpg";
 
 type TopbarProps = {
   user: {
@@ -49,8 +50,8 @@ export function Topbar({ user }: TopbarProps) {
         </div>
         <div className="brand brand-center">
           <Image
-            src="/icon.svg"
-            alt="MCP Chess rook logo"
+            src={logoImage}
+            alt="MCP Chess logo"
             width={30}
             height={30}
             className="brand-logo"
