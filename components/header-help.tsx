@@ -117,6 +117,12 @@ export function HeaderHelp() {
                 </ol>
               </div>
             )}
+
+            <div className="help-support">
+              <a href="mailto:sam@directeddomains.com" className="text-link">
+                Contact Support
+              </a>
+            </div>
           </div>
         </div>
       )}

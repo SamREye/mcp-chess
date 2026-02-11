@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import "@/app/globals.css";
+import { SiteFooter } from "@/components/site-footer";
 import { Topbar } from "@/components/topbar";
 import { auth } from "@/lib/auth";
 
@@ -21,7 +22,8 @@ export default async function RootLayout({
       <body>
         <div className="page-shell">
           <Topbar user={session?.user ?? null} />
-          <main>{children}</main>
+          <main className="page-main">{children}</main>
+          <SiteFooter />
         </div>
       </body>
     </html>
