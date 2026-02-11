@@ -214,8 +214,8 @@ type PromotionPrompt = {
   color: "w" | "b";
 };
 
-const MOVE_ANIMATION_MS = 180;
-const CAPTURE_ANIMATION_MS = 360;
+const MOVE_ANIMATION_MS = 360;
+const CAPTURE_ANIMATION_MS = 720;
 const PROMOTION_LABELS: Record<PromotionPiece, string> = {
   q: "Queen",
   r: "Rook",

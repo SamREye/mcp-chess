@@ -1374,11 +1374,11 @@ button.primary:hover {
 }
 
 .anim-piece-move {
-  animation: piece-move 180ms ease-out forwards;
+  animation: piece-move 360ms ease-out forwards;
 }
 
 .anim-piece-captured {
-  animation: piece-capture-fall 360ms cubic-bezier(0.2, 0.72, 0.28, 1) forwards;
+  animation: piece-capture-fall 720ms cubic-bezier(0.2, 0.72, 0.28, 1) forwards;
 }
 
 .board-wrap {
