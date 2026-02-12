@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { formatHumanRelativeDate } from "@/lib/date-time";
 import { PlayerCard } from "@/components/player-card";
 
 type GameCardPlayer = {
@@ -29,6 +30,7 @@ function getStatusTone(status: string) {
 
 export function GameCard({ game }: GameCardProps) {
   const statusTone = getStatusTone(game.status);
+  const lastMoveLabel = formatHumanRelativeDate(game.updatedAt);
 
   return (
     <Link href={`/games/${game.id}`} className="game-card">
@@ -53,15 +55,16 @@ export function GameCard({ game }: GameCardProps) {
           />
         </div>
         <div className="game-card-state">
-          <span className="game-card-moves">{game.moveCount} moves</span>
-          <span className={`game-card-status game-card-status-${statusTone}`}>{game.status}</span>
+          <div className="game-card-status-wrap">
+            <div className="game-card-status-row">
+              <span className="game-card-moves">{game.moveCount} moves</span>
+              <span className={`game-card-status game-card-status-${statusTone}`}>{game.status}</span>
+            </div>
+            <span className="game-card-timestamp">
+              Last move: {lastMoveLabel}
+            </span>
+          </div>
         </div>
-      </div>
-
-      <div className="game-card-meta">
-        <span className="game-card-timestamp">
-          Last move: {new Date(game.updatedAt).toLocaleString()}
-        </span>
       </div>
     </Link>
   );
