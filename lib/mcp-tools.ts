@@ -6,7 +6,12 @@ import { publishGameEvent, publishGamesEvent } from "@/lib/ably-server";
 import { db } from "@/lib/db";
 import { getPiecesFromFen } from "@/lib/chess-utils";
 import { sendGameInvitationEmail } from "@/lib/email";
-import { getSnapshotPath, getSnapshotVersion } from "@/lib/snapshot";
+import {
+  getSnapshotMimeType,
+  getSnapshotPath,
+  getSnapshotVersion,
+  normalizeSnapshotFormat
+} from "@/lib/snapshot";
 
 type ToolContext = {
   userId: string | null;
@@ -56,7 +61,8 @@ const gameIdInput = z.object({
 
 const snapshotInput = z.object({
   gameId: z.string().min(1),
-  size: z.number().int().min(200).max(1200).default(560)
+  size: z.number().int().min(200).max(1200).default(560),
+  format: z.enum(["png", "jpg", "jpeg", "svg"]).default("png")
 });
 
 const historyInput = z.object({
@@ -412,12 +418,18 @@ export const toolDefs: ToolDef[] = [
   {
     name: "snapshot",
     description:
-      "Return a public URL for the current board snapshot image for a game, plus metadata.",
+      "Return a public board snapshot URL for a game. Supports format: png (default), jpg, svg. Prefer png for chat-client compatibility.",
     inputSchema: {
       type: "object",
       properties: {
         gameId: { type: "string" },
-        size: { type: "number" }
+        size: { type: "number" },
+        format: {
+          type: "string",
+          enum: ["png", "jpg", "jpeg", "svg"],
+          description:
+            "Output image format. One of: png, jpg, jpeg, svg. Default: png."
+        }
       },
       required: ["gameId"]
     },
@@ -427,13 +439,15 @@ export const toolDefs: ToolDef[] = [
       if (!game || !game.isPublic) throw new Error("Game not found");
 
       const version = getSnapshotVersion(game.updatedAt);
-      const snapshotPath = getSnapshotPath(game.id, version, input.size);
+      const format = normalizeSnapshotFormat(input.format);
+      const snapshotPath = getSnapshotPath(game.id, version, input.size, format);
 
       return {
         gameId: game.id,
         version,
         snapshotPath,
-        mimeType: "image/svg+xml"
+        format,
+        mimeType: getSnapshotMimeType(format)
       };
     }
   },
