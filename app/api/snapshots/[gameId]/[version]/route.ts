@@ -80,8 +80,7 @@ export async function GET(req: Request, ctx: RouteContext) {
 
   let rasterized: Buffer;
   try {
-    rasterized = await sharp(Buffer.from(svg), { density: 300 })
-      .resize({ width: size, height: size, fit: "fill" })
+    rasterized = await sharp(Buffer.from(svg))
       [requestedFormat === "jpg" ? "jpeg" : "png"](
         requestedFormat === "jpg" ? { quality: 90, progressive: true } : { compressionLevel: 9 }
       )
