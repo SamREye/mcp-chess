@@ -61,13 +61,6 @@ export function renderBoardSvg(fen: string, size = 560): string {
       const light = (rankIndex + fileIndex) % 2 === 0;
       const fill = light ? "#f0d9b5" : "#b58863";
       out += `<rect x='${x}' y='${y}' width='${square}' height='${square}' fill='${fill}' />`;
-      const coordColor = light ? "#b58863" : "#f0d9b5";
-      if (fileIndex === 0) {
-        out += `<text x='${x + square * 0.08}' y='${y + square * 0.2}' font-size='${square * 0.2}' font-family='\"Arial\", sans-serif' font-weight='700' fill='${coordColor}'>${rank}</text>`;
-      }
-      if (rankIndex === 7) {
-        out += `<text x='${x + square * 0.9}' y='${y + square * 0.92}' text-anchor='end' font-size='${square * 0.2}' font-family='\"Arial\", sans-serif' font-weight='700' fill='${coordColor}'>${files[fileIndex].toUpperCase()}</text>`;
-      }
 
       const piece = board[rankIndex]?.[fileIndex];
       if (!piece) continue;
