@@ -1,4 +1,6 @@
 import { Chess } from "chess.js";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { getChessPieceAssetPath } from "@/lib/chess-piece-assets";
 
 export type PieceStatus = {
@@ -6,6 +8,21 @@ export type PieceStatus = {
   type: "p" | "r" | "n" | "b" | "q" | "k";
   color: "w" | "b";
 };
+
+const pieceDataUriCache = new Map<string, string>();
+
+function getEmbeddedPieceDataUri(color: PieceStatus["color"], type: PieceStatus["type"]) {
+  const cacheKey = `${color}-${type}`;
+  const cached = pieceDataUriCache.get(cacheKey);
+  if (cached) return cached;
+
+  const publicAssetPath = getChessPieceAssetPath(color, type).replace(/^\//, "");
+  const filePath = path.join(process.cwd(), "public", publicAssetPath);
+  const source = readFileSync(filePath, "utf8");
+  const dataUri = `data:image/svg+xml;base64,${Buffer.from(source).toString("base64")}`;
+  pieceDataUriCache.set(cacheKey, dataUri);
+  return dataUri;
+}
 
 export function getPiecesFromFen(fen: string): PieceStatus[] {
   const chess = new Chess(fen);
@@ -56,7 +73,7 @@ export function renderBoardSvg(fen: string, size = 560): string {
       if (!piece) continue;
 
       const label = `${files[fileIndex]}${rank}`;
-      const imagePath = getChessPieceAssetPath(piece.color, piece.type);
+      const imagePath = getEmbeddedPieceDataUri(piece.color, piece.type);
       const imageSize = square * 0.82;
       const imageOffset = (square - imageSize) / 2;
 
