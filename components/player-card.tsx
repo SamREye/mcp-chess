@@ -60,7 +60,7 @@ export function PlayerCard({
             aria-label={`${pieceColor} player`}
             title={`${pieceColor[0].toUpperCase()}${pieceColor.slice(1)} player`}
           >
-            ♜
+            ♚
           </span>
         ) : null}
       </span>

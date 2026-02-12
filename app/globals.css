@@ -250,7 +250,7 @@ a {
   right: -0.08rem;
   bottom: -0.08rem;
   display: inline-block;
-  font-size: 0.84rem;
+  font-size: 0.92rem;
   line-height: 1;
   background: transparent;
   border: 0;
@@ -321,7 +321,7 @@ a {
 }
 
 .player-card-sm .player-card-color-rook {
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   right: -0.08rem;
   bottom: -0.08rem;
 }
