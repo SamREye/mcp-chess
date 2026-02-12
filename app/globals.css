@@ -811,7 +811,7 @@ button.primary:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.06rem;
+  gap: 0;
 }
 
 .captured-row-outside {
@@ -832,6 +832,10 @@ button.primary:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.captured-piece + .captured-piece {
+  margin-left: -0.66rem;
 }
 
 .captured-empty {
