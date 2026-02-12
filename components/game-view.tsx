@@ -936,51 +936,55 @@ export function GameView({
       <section className="panel stack game-panel">
         <div className="game-head-row">
           <div className="game-head">
-            <div className="game-head-player-stack">
-              <PlayerCard player={game.white} className="game-head-player-card" pieceColor="white" />
-              <div className="captured-row captured-row-white" aria-label="Pieces captured by White">
-                {capturedPieces.white.length > 0 ? (
-                  capturedPieces.white.map((piece, index) => (
-                    <span
-                      key={`white-captured-${piece}-${index}`}
-                      className="captured-piece"
-                      title="Captured black piece"
-                    >
-                      <img
-                        src={getChessPieceAssetPath("b", piece)}
-                        alt={getChessPieceLabel("b", piece)}
-                        className="piece-img piece-img-captured"
-                        draggable={false}
-                      />
-                    </span>
-                  ))
-                ) : (
-                  <span className="captured-empty">No captures</span>
-                )}
+            <div className="game-head-player-slot game-head-player-slot-white">
+              <div className="captured-row captured-row-outside captured-row-white" aria-label="Pieces captured by White">
+                {capturedPieces.white.map((piece, index) => (
+                  <span
+                    key={`white-captured-${piece}-${index}`}
+                    className="captured-piece"
+                    title="Captured black piece"
+                  >
+                    <img
+                      src={getChessPieceAssetPath("b", piece)}
+                      alt={getChessPieceLabel("b", piece)}
+                      className="piece-img piece-img-captured"
+                      draggable={false}
+                    />
+                  </span>
+                ))}
               </div>
+              <PlayerCard
+                player={game.white}
+                className="game-head-player-card"
+                avatarClassName="pvp-avatar"
+                pieceColor="white"
+                showMeta={false}
+              />
             </div>
             <span className="game-head-vs">vs</span>
-            <div className="game-head-player-stack">
-              <PlayerCard player={game.black} className="game-head-player-card" pieceColor="black" />
-              <div className="captured-row captured-row-black" aria-label="Pieces captured by Black">
-                {capturedPieces.black.length > 0 ? (
-                  capturedPieces.black.map((piece, index) => (
-                    <span
-                      key={`black-captured-${piece}-${index}`}
-                      className="captured-piece"
-                      title="Captured white piece"
-                    >
-                      <img
-                        src={getChessPieceAssetPath("w", piece)}
-                        alt={getChessPieceLabel("w", piece)}
-                        className="piece-img piece-img-captured"
-                        draggable={false}
-                      />
-                    </span>
-                  ))
-                ) : (
-                  <span className="captured-empty">No captures</span>
-                )}
+            <div className="game-head-player-slot game-head-player-slot-black">
+              <PlayerCard
+                player={game.black}
+                className="game-head-player-card"
+                avatarClassName="pvp-avatar"
+                pieceColor="black"
+                showMeta={false}
+              />
+              <div className="captured-row captured-row-outside captured-row-black" aria-label="Pieces captured by Black">
+                {capturedPieces.black.map((piece, index) => (
+                  <span
+                    key={`black-captured-${piece}-${index}`}
+                    className="captured-piece"
+                    title="Captured white piece"
+                  >
+                    <img
+                      src={getChessPieceAssetPath("w", piece)}
+                      alt={getChessPieceLabel("w", piece)}
+                      className="piece-img piece-img-captured"
+                      draggable={false}
+                    />
+                  </span>
+                ))}
               </div>
             </div>
           </div>
@@ -1168,7 +1172,6 @@ export function GameView({
                           image={move.player.image}
                           fallback={avatarFallback.toUpperCase()}
                           className="history-item-avatar"
-                          title={move.player.email ?? move.player.name ?? "Player"}
                         />
                         <span
                           className="history-item-piece"

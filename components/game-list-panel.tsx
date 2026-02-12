@@ -382,7 +382,9 @@ export function GameListPanel({ currentUser }: { currentUser: CurrentUser | null
                 <PlayerCard
                   player={whitePreview}
                   className="new-game-preview-player"
+                  avatarClassName="pvp-avatar"
                   pieceColor="white"
+                  showMeta={false}
                 />
               </div>
               <span className="new-game-vs">vs</span>
@@ -391,7 +393,9 @@ export function GameListPanel({ currentUser }: { currentUser: CurrentUser | null
                 <PlayerCard
                   player={blackPreview}
                   className="new-game-preview-player"
+                  avatarClassName="pvp-avatar"
                   pieceColor="black"
+                  showMeta={false}
                 />
               </div>
             </div>

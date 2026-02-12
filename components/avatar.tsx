@@ -13,6 +13,19 @@ function getInitial(input: string | null | undefined, fallback: string) {
   return text[0].toUpperCase();
 }
 
+function getUserTooltip(
+  name: string | null | undefined,
+  email: string | null | undefined,
+  fallback: string
+) {
+  const normalizedName = name?.trim();
+  const normalizedEmail = email?.trim();
+  if (normalizedName && normalizedEmail) return `${normalizedName} (${normalizedEmail})`;
+  if (normalizedName) return normalizedName;
+  if (normalizedEmail) return normalizedEmail;
+  return fallback;
+}
+
 function getAvatarSrc(image: string | null | undefined) {
   const value = image?.trim();
   if (!value) return null;
@@ -38,8 +51,8 @@ export function Avatar({
   className,
   title
 }: AvatarProps) {
-  const resolvedTitle = title ?? email ?? name ?? "User";
-  const initial = getInitial(email ?? name, fallback);
+  const resolvedTitle = title ?? getUserTooltip(name, email, "User");
+  const initial = getInitial(name ?? email, fallback);
   const src = getAvatarSrc(image);
 
   return (

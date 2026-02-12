@@ -38,21 +38,27 @@ export function GameCard({ game }: GameCardProps) {
             player={game.white}
             size="sm"
             className="game-card-player"
+            avatarClassName="pvp-avatar"
             pieceColor="white"
+            showMeta={false}
           />
           <span className="game-card-vs">vs</span>
           <PlayerCard
             player={game.black}
             size="sm"
             className="game-card-player"
+            avatarClassName="pvp-avatar"
             pieceColor="black"
+            showMeta={false}
           />
         </div>
-        <span className={`game-card-status game-card-status-${statusTone}`}>{game.status}</span>
+        <div className="game-card-state">
+          <span className="game-card-moves">{game.moveCount} moves</span>
+          <span className={`game-card-status game-card-status-${statusTone}`}>{game.status}</span>
+        </div>
       </div>
 
       <div className="game-card-meta">
-        <span>{game.moveCount} moves</span>
         <span className="game-card-timestamp">
           Last move: {new Date(game.updatedAt).toLocaleString()}
         </span>

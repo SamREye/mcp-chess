@@ -14,6 +14,7 @@ type PlayerCardProps = {
   size?: "sm" | "md";
   align?: "left" | "right";
   pieceColor?: "white" | "black";
+  showMeta?: boolean;
 };
 
 function getDisplayName(player: PlayerLike) {
@@ -36,15 +37,19 @@ export function PlayerCard({
   avatarClassName,
   size = "md",
   align = "left",
-  pieceColor
+  pieceColor,
+  showMeta = true
 }: PlayerCardProps) {
   const displayName = getDisplayName(player);
   const displayEmail = getDisplayEmail(player);
   const fallback = (displayName[0] ?? "?").toUpperCase();
-  const title = player.email ?? player.name ?? player.id ?? "Player";
 
   return (
-    <div className={`player-card player-card-${size} player-card-${align} ${className ?? ""}`.trim()}>
+    <div
+      className={`player-card player-card-${size} player-card-${align} ${
+        showMeta ? "" : "player-card-avatar-only"
+      } ${className ?? ""}`.trim()}
+    >
       <span className="player-card-avatar-wrap">
         <Avatar
           email={player.email}
@@ -52,7 +57,6 @@ export function PlayerCard({
           image={player.image}
           fallback={fallback}
           className={`player-card-avatar ${avatarClassName ?? ""}`.trim()}
-          title={title}
         />
         {pieceColor ? (
           <span
@@ -64,10 +68,12 @@ export function PlayerCard({
           </span>
         ) : null}
       </span>
-      <div className="player-card-meta">
-        <p className="player-card-name">{displayName}</p>
-        <p className="player-card-email">{displayEmail}</p>
-      </div>
+      {showMeta ? (
+        <div className="player-card-meta">
+          <p className="player-card-name">{displayName}</p>
+          <p className="player-card-email">{displayEmail}</p>
+        </div>
+      ) : null}
     </div>
   );
 }

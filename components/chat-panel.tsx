@@ -77,7 +77,6 @@ export function ChatPanel({
             );
             const fallback = (msg.user.name?.trim()?.[0] ?? msg.user.email?.trim()?.[0] ?? "?")
               .toUpperCase();
-            const title = msg.user.email ?? msg.user.name ?? "Player";
             return (
               <div
                 key={msg.id}
@@ -89,7 +88,6 @@ export function ChatPanel({
                   name={msg.user.name}
                   image={msg.user.image}
                   fallback={fallback}
-                  title={title}
                   className="chat-player-avatar"
                 />
                 <div className="chat-msg-content">
