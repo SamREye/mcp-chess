@@ -206,6 +206,19 @@ type PromotionPrompt = {
   color: "w" | "b";
 };
 
+type ResultOutcome = "win" | "loss" | "stalemate";
+type ResultAnnouncement = {
+  outcome: ResultOutcome;
+  title: string;
+  subtitle: string;
+  detail: string;
+};
+
+type ResultWinner = {
+  image: string | null;
+  color: "w" | "b";
+};
+
 const MOVE_ANIMATION_MS = 360;
 const CAPTURE_ANIMATION_MS = 720;
 const PROMOTION_LABELS: Record<PromotionPiece, string> = {
@@ -346,6 +359,7 @@ export function GameView({
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [mobilePane, setMobilePane] = useState<MobilePane>("board");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [dismissedResultFen, setDismissedResultFen] = useState<string | null>(null);
   const toastIdRef = useRef(0);
   const recentMoveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -682,6 +696,55 @@ export function GameView({
   const canPlay = Boolean(game?.canMove && myColor && isGameActive);
   const isMyTurn = Boolean(canPlay && status?.turn === myColor);
 
+  const resultAnnouncement = useMemo<ResultAnnouncement | null>(() => {
+    if (!status || status.gameStatus === "ACTIVE") return null;
+
+    if (status.isCheckmate) {
+      const winnerColor: "w" | "b" = status.turn === "w" ? "b" : "w";
+      const isWin = Boolean(myColor && winnerColor === myColor);
+
+      return {
+        outcome: isWin ? "win" : myColor ? "loss" : "win",
+        title: "Checkmate",
+        subtitle: "Checkmate.",
+        detail: `Checkmate ending.`
+      };
+    }
+
+    if (status.isStalemate) {
+      return {
+        outcome: "stalemate",
+        title: "Stalemate",
+        subtitle: "No legal moves remain.",
+        detail: "The game is a draw."
+      };
+    }
+
+    if (status.isDraw) {
+      return {
+        outcome: "stalemate",
+        title: "Draw",
+        subtitle: "Draw detected.",
+        detail: "No winner in this game."
+      };
+    }
+
+    return null;
+  }, [status, myColor]);
+
+  const resultWinner = useMemo<ResultWinner | null>(() => {
+    if (!status || !game) return null;
+    if (status.gameStatus === "ACTIVE" || !status.isCheckmate) return null;
+
+    const winnerColor: "w" | "b" = status.turn === "w" ? "b" : "w";
+    const winner = winnerColor === "w" ? game.white : game.black;
+
+    return {
+      image: winner.image,
+      color: winnerColor
+    };
+  }, [status, game]);
+
   const statusMessage = useMemo(() => {
     if (!status) return "";
 
@@ -690,6 +753,7 @@ export function GameView({
         const winnerColor = status.turn === "w" ? "b" : "w";
         return `Check mate! You ${winnerColor === myColor ? "win" : "lose"}!`;
       }
+
       return "Check mate!";
     }
 
@@ -720,6 +784,14 @@ export function GameView({
     if (canPlay) return "waiting-turn";
     return "spectator-turn";
   }, [status, isMyTurn, canPlay]);
+
+  const isResultAnnouncementOpen = Boolean(resultAnnouncement) && dismissedResultFen !== status?.fen;
+
+  function closeResultAnnouncement() {
+    if (status?.fen) {
+      setDismissedResultFen(status.fen);
+    }
+  }
 
   const capturedPieces = useMemo(
     () => getCapturedPiecesFromHistory(historyMoves),
@@ -1131,6 +1203,61 @@ export function GameView({
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {isResultAnnouncementOpen && resultAnnouncement && (
+        <div
+          className="modal-backdrop result-announcement-backdrop"
+          role="status"
+          aria-live="polite"
+        >
+          <div className={`result-announcement-card result-announcement-${resultAnnouncement.outcome}`}>
+            <span className="result-sparkles" aria-hidden="true">
+              <span className="result-sparkle result-sparkle-a" />
+              <span className="result-sparkle result-sparkle-b" />
+              <span className="result-sparkle result-sparkle-c" />
+            </span>
+            <span
+              className={`result-announcement-icon result-announcement-icon-${resultAnnouncement.outcome}`}
+              aria-hidden="true"
+            />
+            <h3 className="result-announcement-title">{resultAnnouncement.title}</h3>
+            {resultWinner && (
+              <div className="result-announcement-winner">
+                <span className="result-announcement-winner-wrap">
+                  <Avatar
+                    email={null}
+                    name={null}
+                    image={resultWinner.image}
+                    fallback="?"
+                    title="Winner"
+                    className="result-announcement-winner-avatar"
+                  />
+                  <span
+                    className={`result-announcement-winner-rook result-announcement-winner-rook-${
+                      resultWinner.color === "w" ? "white" : "black"
+                    }`}
+                    aria-hidden="true"
+                  >
+                    ♚
+                  </span>
+                </span>
+                <span className="result-announcement-winner-label">Winner</span>
+              </div>
+            )}
+            <p className="result-announcement-subtitle">{resultAnnouncement.subtitle}</p>
+            <p className="result-announcement-detail">{resultAnnouncement.detail}</p>
+            <div className="result-announcement-actions">
+              <button
+                type="button"
+                className="result-announcement-close"
+                onClick={closeResultAnnouncement}
+              >
+                Continue
+              </button>
+            </div>
           </div>
         </div>
       )}

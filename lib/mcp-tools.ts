@@ -567,6 +567,7 @@ export const toolDefs: ToolDef[] = [
           white: g.white,
           black: g.black,
           status: g.status,
+          fen: g.fen,
           moveCount: g._count.moves,
           updatedAt: g.updatedAt,
           createdAt: g.createdAt

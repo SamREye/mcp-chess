@@ -12,6 +12,7 @@ type GameSummary = {
   white: { id: string; name: string | null; email: string | null; image: string | null };
   black: { id: string; name: string | null; email: string | null; image: string | null };
   status: string;
+  fen: string;
   moveCount: number;
   updatedAt: string;
 };
