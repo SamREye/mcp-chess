@@ -941,7 +941,7 @@ export function GameView({
     const chess = new Chess(status.fen);
     const legalMoves = chess.moves({ square: selectedFrom as Square, verbose: true });
     const matchingMoves = legalMoves.filter((move) => move.to === (square as Square));
-    const isLegalDestination = legalMoveSquares.includes(square);
+    const isLegalDestination = legalMoveSquares.includes(square as Square);
     if (!isLegalDestination) {
       setIllegalMoveSquare(square);
       if (illegalMoveTimerRef.current) {
