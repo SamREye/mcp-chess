@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 
 const OAUTH_SCOPE = "mcp:tools";
 const CODE_TTL_SECONDS = 5 * 60;
-const ACCESS_TOKEN_TTL_SECONDS = 60 * 60;
+const ACCESS_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 export function getMcpScope() {
   return OAUTH_SCOPE;
