@@ -360,10 +360,12 @@ export function GameView({
   const [mobilePane, setMobilePane] = useState<MobilePane>("board");
   const [unreadCount, setUnreadCount] = useState(0);
   const [dismissedResultFen, setDismissedResultFen] = useState<string | null>(null);
+  const [illegalMoveSquare, setIllegalMoveSquare] = useState<string | null>(null);
   const toastIdRef = useRef(0);
   const recentMoveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const animationResolveRef = useRef<(() => void) | null>(null);
+  const illegalMoveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const statusRef = useRef<StatusData | null>(null);
   const actionsMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -598,11 +600,23 @@ export function GameView({
         clearTimeout(animationTimerRef.current);
         animationTimerRef.current = null;
       }
+      if (illegalMoveTimerRef.current) {
+        clearTimeout(illegalMoveTimerRef.current);
+        illegalMoveTimerRef.current = null;
+      }
       const resolve = animationResolveRef.current;
       animationResolveRef.current = null;
       resolve?.();
     };
   }, []);
+
+  useEffect(() => {
+    setIllegalMoveSquare(null);
+    if (illegalMoveTimerRef.current) {
+      clearTimeout(illegalMoveTimerRef.current);
+      illegalMoveTimerRef.current = null;
+    }
+  }, [selectedFrom, status?.fen]);
 
   useEffect(() => {
     if (!promotionPrompt) return;
@@ -659,6 +673,13 @@ export function GameView({
     }
     return map;
   }, [status?.pieces]);
+
+  const legalMoveSquares = useMemo(() => {
+    if (!status || !selectedFrom) return [];
+    const chess = new Chess(status.fen);
+    const legalMoves = chess.moves({ square: selectedFrom as Square, verbose: true });
+    return legalMoves.map((move) => move.to);
+  }, [selectedFrom, status?.fen]);
 
   const myColor = useMemo(() => {
     if (!game) return null;
@@ -887,17 +908,32 @@ export function GameView({
         pushToast("warning", "Select one of your pieces first.");
         return;
       }
+      setIllegalMoveSquare(null);
+      if (illegalMoveTimerRef.current) {
+        clearTimeout(illegalMoveTimerRef.current);
+        illegalMoveTimerRef.current = null;
+      }
       setSelectedFrom(square);
       return;
     }
 
     if (selectedFrom === square) {
       setSelectedFrom(null);
+      setIllegalMoveSquare(null);
+      if (illegalMoveTimerRef.current) {
+        clearTimeout(illegalMoveTimerRef.current);
+        illegalMoveTimerRef.current = null;
+      }
       return;
     }
 
     const targetPiece = piecesBySquare.get(square);
     if (targetPiece?.color === myColor) {
+      setIllegalMoveSquare(null);
+      if (illegalMoveTimerRef.current) {
+        clearTimeout(illegalMoveTimerRef.current);
+        illegalMoveTimerRef.current = null;
+      }
       setSelectedFrom(square);
       return;
     }
@@ -905,10 +941,24 @@ export function GameView({
     const chess = new Chess(status.fen);
     const legalMoves = chess.moves({ square: selectedFrom as Square, verbose: true });
     const matchingMoves = legalMoves.filter((move) => move.to === (square as Square));
-    if (matchingMoves.length === 0) {
+    const isLegalDestination = legalMoveSquares.includes(square);
+    if (!isLegalDestination) {
+      setIllegalMoveSquare(square);
+      if (illegalMoveTimerRef.current) {
+        clearTimeout(illegalMoveTimerRef.current);
+      }
+      illegalMoveTimerRef.current = setTimeout(() => {
+        setIllegalMoveSquare((current) => (current === square ? null : current));
+      }, 900);
       pushToast("warning", "That destination is not legal for the selected piece.");
       return;
     }
+
+    if (illegalMoveTimerRef.current) {
+      clearTimeout(illegalMoveTimerRef.current);
+      illegalMoveTimerRef.current = null;
+    }
+    setIllegalMoveSquare(null);
 
     const promotionChoices = Array.from(
       new Set(
@@ -1135,6 +1185,8 @@ export function GameView({
               <ChessBoard
                 pieces={status.pieces}
                 selectedSquare={selectedFrom}
+                legalSquares={legalMoveSquares}
+                illegalSquare={illegalMoveSquare}
                 lastMoveSquare={lastMoveSquare}
                 recentMoveSquare={recentMoveSquare}
                 animation={boardAnimation}

@@ -38,6 +38,8 @@ function getSquarePosition(square: string, orientation: "white" | "black") {
 export function ChessBoard({
   pieces,
   selectedSquare,
+  legalSquares,
+  illegalSquare,
   lastMoveSquare,
   recentMoveSquare,
   animation,
@@ -47,6 +49,8 @@ export function ChessBoard({
 }: {
   pieces: Piece[];
   selectedSquare: string | null;
+  legalSquares: string[];
+  illegalSquare: string | null;
   lastMoveSquare?: string | null;
   recentMoveSquare?: string | null;
   animation?: ChessBoardAnimation | null;
@@ -89,6 +93,8 @@ export function ChessBoard({
           const piece = map.get(square);
           const fileCode = file.charCodeAt(0) - "a".charCodeAt(0);
           const isLight = (fileCode + rank) % 2 === 0;
+          const isLegalSquare = legalSquares.includes(square);
+          const isIllegalSquare = illegalSquare === square;
 
           return (
             <button
@@ -100,7 +106,7 @@ export function ChessBoard({
                 selectedSquare === square ? "selected" : ""
               } ${lastMoveSquare === square ? "last-move" : ""} ${
                 recentMoveSquare === square ? "last-move-recent" : ""
-              }`}
+                } ${isLegalSquare ? "legal-move" : ""} ${isIllegalSquare ? "illegal-move" : ""}`}
               title={square}
             >
               {fileIdx === 0 ? (
