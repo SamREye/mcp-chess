@@ -254,6 +254,48 @@ export const toolDefs: ToolDef[] = [
     }
   },
   {
+    name: "archive_game",
+    description: "Archive (soft-delete) a game you are playing so it is removed from active game listings.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        gameId: { type: "string" }
+      },
+      required: ["gameId"]
+    },
+    execute: async (args, ctx) => {
+      const userId = requireAuth(ctx.userId);
+      const input = gameIdInput.parse(args ?? {});
+
+      const game = await db.game.findUnique({
+        where: { id: input.gameId }
+      });
+
+      if (!game) {
+        throw new Error("Game not found");
+      }
+
+      if (game.whiteId !== userId && game.blackId !== userId) {
+        throw new Error("Only game players can archive games");
+      }
+
+      if (!game.isPublic) {
+        return { game: { id: game.id, archived: true } };
+      }
+
+      await db.game.update({
+        where: { id: game.id },
+        data: { isPublic: false }
+      });
+      await publishGamesEvent("game.updated", {
+        gameId: game.id,
+        archivedByUserId: userId
+      });
+
+      return { game: { id: game.id, archived: true } };
+    }
+  },
+  {
     name: "move_piece",
     description: "Move a piece in a game (authenticated game players only).",
     inputSchema: {
@@ -389,10 +431,25 @@ export const toolDefs: ToolDef[] = [
         }
 
         const winnerUserId = isWhite ? game.blackId : game.whiteId;
+        const ply = await tx.move.count({ where: { gameId: game.id } });
 
         await tx.game.update({
           where: { id: game.id },
           data: { status: GameStatus.FINISHED }
+        });
+
+        await tx.move.create({
+          data: {
+            gameId: game.id,
+            byUserId: userId,
+            from: "resign",
+            to: "resign",
+            promotion: null,
+            san: "resign",
+            fenBefore: game.fen,
+            fenAfter: game.fen,
+            ply: ply + 1
+          }
         });
 
         return {
@@ -555,7 +612,12 @@ export const toolDefs: ToolDef[] = [
         include: {
           white: { select: { id: true, name: true, email: true, image: true } },
           black: { select: { id: true, name: true, email: true, image: true } },
-          _count: { select: { moves: true } }
+          _count: { select: { moves: true } },
+          moves: {
+            orderBy: { ply: "desc" },
+            take: 1,
+            select: { byUserId: true, san: true }
+          }
         },
         orderBy: { updatedAt: "desc" },
         take: input.limit
@@ -570,7 +632,9 @@ export const toolDefs: ToolDef[] = [
           fen: g.fen,
           moveCount: g._count.moves,
           updatedAt: g.updatedAt,
-          createdAt: g.createdAt
+          createdAt: g.createdAt,
+          lastMoveByUserId: g.moves[0]?.byUserId ?? null,
+          lastMoveSan: g.moves[0]?.san ?? null
         }))
       };
     }

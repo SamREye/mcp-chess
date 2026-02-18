@@ -489,6 +489,7 @@ button.primary:hover {
 
 .game-card {
   display: grid;
+  position: relative;
   gap: 0.68rem;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -680,9 +681,28 @@ button.primary:hover {
   color: #334155;
 }
 
+.game-card-conclusion-win {
+  color: #14532d;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.game-card-conclusion-loss {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
 .game-list-main {
   width: min(980px, 100%);
   margin: 0.85rem auto 0;
+}
+
+.game-card-overflow {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  z-index: 2;
 }
 
 .game-list-head {
