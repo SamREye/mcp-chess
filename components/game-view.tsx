@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chess } from "chess.js";
 import type { Square } from "chess.js";
 import * as Ably from "ably";
+import { useRouter } from "next/navigation";
 
 import { ChessBoard } from "@/components/chess-board";
 import type { ChessBoardAnimation } from "@/components/chess-board";
@@ -356,11 +357,13 @@ export function GameView({
   const [isActionsOpen, setIsActionsOpen] = useState(false);
   const [isBoardSyncing, setIsBoardSyncing] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [mobilePane, setMobilePane] = useState<MobilePane>("board");
   const [unreadCount, setUnreadCount] = useState(0);
   const [dismissedResultFen, setDismissedResultFen] = useState<string | null>(null);
   const [illegalMoveSquare, setIllegalMoveSquare] = useState<string | null>(null);
+  const router = useRouter();
   const toastIdRef = useRef(0);
   const recentMoveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const animationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -716,6 +719,9 @@ export function GameView({
   const canChat = Boolean(myColor && currentUserId);
   const canPlay = Boolean(game?.canMove && myColor && isGameActive);
   const isMyTurn = Boolean(canPlay && status?.turn === myColor);
+  const canArchive = Boolean(
+    currentUserId && (game?.white.id === currentUserId || game?.black.id === currentUserId)
+  );
 
   const resultAnnouncement = useMemo<ResultAnnouncement | null>(() => {
     if (!status || status.gameStatus === "ACTIVE") return null;
@@ -1025,6 +1031,30 @@ export function GameView({
     setIsResignConfirmOpen(true);
   }
 
+  async function handleArchive() {
+    if (!canArchive || isArchiving) return;
+
+    setIsActionsOpen(false);
+    if (!window.confirm("Archive this game?")) return;
+
+    setIsArchiving(true);
+    setError(null);
+
+    try {
+      await callMcpTool("archive_game", {
+        gameId
+      });
+      void router.push("/");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to archive game";
+      setError(message);
+      pushToast("error", message);
+      void refreshBoardState();
+    } finally {
+      setIsArchiving(false);
+    }
+  }
+
   async function sendMessage(body: string) {
     await callMcpTool("post_chat_message", {
       gameId,
@@ -1113,12 +1143,14 @@ export function GameView({
           <div className="game-status-actions">
             <div className={`turn-banner game-status-pill ${statusClassName}`}>
               {statusMessage}
-              {(isMovePending || isBoardSyncing || isResigning) && (
+              {(isMovePending || isBoardSyncing || isResigning || isArchiving) && (
                 <span className="inline-loader">
                   {isResigning
                     ? " Resigning..."
                     : isMovePending
                       ? " Applying move..."
+                      : isArchiving
+                        ? " Archiving..."
                       : " Syncing..."}
                 </span>
               )}
@@ -1153,6 +1185,17 @@ export function GameView({
                       disabled={isMovePending || isBoardSyncing || isResigning}
                     >
                       Resign
+                    </button>
+                  )}
+                  {canArchive && (
+                    <button
+                      type="button"
+                      className="overflow-menu-item overflow-menu-item-danger"
+                      role="menuitem"
+                      onClick={() => void handleArchive()}
+                      disabled={isMovePending || isBoardSyncing || isResigning || isArchiving}
+                    >
+                      {isArchiving ? "Archiving..." : "Archive"}
                     </button>
                   )}
                 </div>

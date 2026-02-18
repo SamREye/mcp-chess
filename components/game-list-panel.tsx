@@ -67,12 +67,10 @@ export function GameListPanel({ currentUser }: { currentUser: CurrentUser | null
   const [inviteInfo, setInviteInfo] = useState<string | null>(null);
   const [isCreatingGame, setIsCreatingGame] = useState(false);
   const [newGameError, setNewGameError] = useState<string | null>(null);
-  const [archiveError, setArchiveError] = useState<string | null>(null);
 
   const loadGames = useCallback(async () => {
     setLoadingGames(true);
     setGamesError(null);
-    setArchiveError(null);
 
     try {
       if (currentUserId) {
@@ -109,20 +107,6 @@ export function GameListPanel({ currentUser }: { currentUser: CurrentUser | null
       setLoadingGames(false);
     }
   }, [currentUserId]);
-
-  const archiveGame = useCallback(async (gameId: string) => {
-    setArchiveError(null);
-    try {
-      await callMcpTool<{ game: { id: string } }>("archive_game", {
-        gameId
-      });
-      await loadGames();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to archive game";
-      setArchiveError(message);
-      throw new Error(message);
-    }
-  }, [loadGames]);
 
   useEffect(() => {
     if (!currentUserId && tab === "my") {
@@ -379,15 +363,12 @@ export function GameListPanel({ currentUser }: { currentUser: CurrentUser | null
                 <GameCard
                   game={game}
                   outcomeForCurrentUser={getResignationOutcomeForCurrentUser(game)}
-                  canArchive={Boolean(currentUserId && (game.white.id === currentUserId || game.black.id === currentUserId))}
-                  onArchive={archiveGame}
                 />
               </li>
             ))}
           </ul>
         )}
 
-        {archiveError && <p className="error">{archiveError}</p>}
         {gamesError && <p className="error">{gamesError}</p>}
       </section>
 

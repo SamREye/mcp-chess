@@ -1,13 +1,6 @@
- "use client";
+"use client";
 
 import { Chess } from "chess.js";
-import {
-  type MouseEvent as ReactMouseEvent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState
-} from "react";
 
 import Link from "next/link";
 
@@ -32,8 +25,6 @@ type GameCardProps = {
     moveCount: number;
     updatedAt: string;
   };
-  canArchive?: boolean;
-  onArchive?: (gameId: string) => void | Promise<void>;
   outcomeForCurrentUser?: "win" | "loss" | null;
 };
 
@@ -124,91 +115,13 @@ function renderOutcomeLabel(outcome: "win" | "loss") {
   );
 }
 
-export function GameCard({ game, canArchive = false, onArchive, outcomeForCurrentUser }: GameCardProps) {
+export function GameCard({ game, outcomeForCurrentUser }: GameCardProps) {
   const statusTone = getStatusTone(game.status);
   const lastMoveLabel = formatHumanRelativeDate(game.updatedAt);
   const conclusion = getGameConclusion(game);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isArchiving, setIsArchiving] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!isMenuOpen) return;
-
-    const onMouseDown = (event: MouseEvent) => {
-      const target = event.target as Node | null;
-      if (!target) return;
-      if (menuRef.current?.contains(target)) return;
-      setIsMenuOpen(false);
-    };
-
-    window.addEventListener("mousedown", onMouseDown);
-    return () => {
-      window.removeEventListener("mousedown", onMouseDown);
-    };
-  }, [isMenuOpen]);
-
-  const handleMenuToggle = useCallback(
-    (event: ReactMouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setIsMenuOpen((open) => !open);
-    },
-    []
-  );
-
-  const handleArchive = useCallback(
-    async (event: ReactMouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-
-      if (!onArchive || isArchiving) return;
-      if (!window.confirm("Archive this game?")) {
-        setIsMenuOpen(false);
-        return;
-      }
-      setIsMenuOpen(false);
-      setIsArchiving(true);
-      try {
-        await onArchive(game.id);
-      } finally {
-        setIsArchiving(false);
-      }
-    },
-    [game.id, isArchiving, onArchive]
-  );
-
-  const showMenu = canArchive && Boolean(onArchive);
 
   return (
     <Link href={`/games/${game.id}`} className="game-card">
-      {showMenu && (
-        <div className="game-card-overflow game-actions-menu" ref={menuRef}>
-          <button
-            type="button"
-            className="overflow-btn"
-            onClick={handleMenuToggle}
-            aria-haspopup="menu"
-            aria-expanded={isMenuOpen}
-            title="Game actions"
-          >
-            ⋯
-          </button>
-          {isMenuOpen && (
-            <div className="overflow-menu" role="menu">
-              <button
-                type="button"
-                className="overflow-menu-item overflow-menu-item-danger"
-                role="menuitem"
-                onClick={handleArchive}
-                disabled={isArchiving}
-              >
-                Archive
-              </button>
-            </div>
-          )}
-        </div>
-      )}
       <div className="game-card-top">
         <div className="game-card-players">
           <PlayerCard
