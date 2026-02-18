@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as Ably from "ably";
 
 import { GameCard } from "@/components/game-card";
 import { PlayerCard } from "@/components/player-card";
@@ -114,6 +115,44 @@ export function GameListPanel({ currentUser }: { currentUser: CurrentUser | null
   useEffect(() => {
     void loadGames();
   }, [loadGames]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const client = new Ably.Realtime({
+      authUrl: "/api/ably/token",
+      autoConnect: true,
+      closeOnUnload: true
+    });
+    const channel = client.channels.get("games");
+    const onMessage = (message: Ably.Message) => {
+      if (message.name === "game.created" || message.name === "game.updated") {
+        void loadGames();
+      }
+    };
+
+    channel.subscribe(onMessage);
+
+    return () => {
+      try {
+        channel.unsubscribe(onMessage);
+      } catch {
+        // Ignore teardown errors if channel/client are already closed.
+      }
+
+      try {
+        client.channels.release("games");
+      } catch {
+        // Ignore teardown errors if channel/client are already closed.
+      }
+
+      try {
+        client.close();
+      } catch {
+        // Ignore teardown errors if channel/client are already closed.
+      }
+    };
+  }, [currentUserId, loadGames]);
 
   useEffect(() => {
     if (!isNewGameOpen) return;
