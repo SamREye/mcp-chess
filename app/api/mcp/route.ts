@@ -32,11 +32,6 @@ type ToolContentItem =
   | {
       type: "text";
       text: string;
-    }
-  | {
-      type: "image";
-      data: string;
-      mimeType: string;
     };
 
 function enrichSnapshotResult(name: string, result: unknown, baseUrl: string) {
@@ -67,9 +62,7 @@ function sanitizeStructuredContent(name: string, result: unknown) {
     return result;
   }
 
-  const { data, dataUrl, ...rest } = result as Record<string, unknown>;
-  void data;
-  void dataUrl;
+  const { ...rest } = result as Record<string, unknown>;
   return rest;
 }
 
@@ -80,45 +73,9 @@ function buildToolContent(name: string, result: unknown): ToolContentItem[] {
     if (snapshotUrl) {
       return [{ type: "text", text: snapshotUrl }];
     }
-
-    const rawData =
-      "data" in result && typeof result.data === "string" ? result.data.trim() : null;
-    const rawMimeType =
-      "mimeType" in result && typeof result.mimeType === "string" ? result.mimeType : null;
-
-    if (rawData && rawMimeType?.startsWith("image/")) {
-      return [
-        {
-          type: "image",
-          data: rawData,
-          mimeType: rawMimeType
-        }
-      ];
-    }
-
-    const rawDataUrl =
-      "dataUrl" in result && typeof result.dataUrl === "string" ? result.dataUrl : null;
-
-    const parsed = parseImageDataUrl(rawDataUrl);
-    if (parsed) {
-      return [
-        {
-          type: "image",
-          data: parsed.base64,
-          mimeType: rawMimeType ?? parsed.mimeType
-        }
-      ];
-    }
   }
 
   return [{ type: "text", text: JSON.stringify(result) }];
-}
-
-function parseImageDataUrl(dataUrl: string | null) {
-  if (!dataUrl) return null;
-  const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=_-]+)$/);
-  if (!match) return null;
-  return { mimeType: match[1], base64: match[2] };
 }
 
 function jsonRpcSuccess(id: string | number | null | undefined, result: unknown) {
